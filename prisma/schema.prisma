@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  players   Player[]
+}
+
+model Game {
+  id              String   @id @default(cuid())
+  initialPoints   Int
+  returnPoints    Int
+  uma1            Int
+  uma2            Int
+  uma3            Int
+  uma4            Int
+  chipPoints      Int
+  chipEnabled     Boolean
+  yakitoriPoints  Int
+  yakitoriEnabled Boolean
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  players         Player[]
+  scores          Score[]
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  position  String
+  gameId    String
+  userId    String?
+  game      Game     @relation(fields: [gameId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gameId])
+  @@index([userId])
+}
+
+model Score {
+  id        String   @id @default(cuid())
+  gameId    String
+  round     Int
+  east      Int
+  south     Int
+  west      Int
+  north     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  game      Game     @relation(fields: [gameId], references: [id])
+
+  @@index([gameId])
+}
