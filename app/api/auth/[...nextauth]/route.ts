@@ -35,6 +35,7 @@ export const authOptions: AuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          createdAt: user.createdAt.toISOString(),
         };
       },
     }),
@@ -46,9 +47,26 @@ export const authOptions: AuthOptions = {
     signIn: '/login',
   },
   callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === 'update' && session?.user) {
+        // セッション更新時にトークンを更新
+        token.id = session.user.id;
+        token.email = session.user.email;
+        token.name = session.user.name;
+      }
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub as string;
+        session.user.id = token.id as string;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string | null;
+        session.user.createdAt = token.createdAt as string;
       }
       return session;
     },

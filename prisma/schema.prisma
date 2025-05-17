@@ -21,6 +21,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   players   Player[]
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friends                Friend[]        @relation("UserFriends")
+  friendOf               Friend[]        @relation("FriendOf")
 }
 
 model Game {
@@ -51,8 +55,6 @@ model Player {
   position  String
   game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
-  scores    Score[]
-  yakitori  Yakitori[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   history   GameHistoryPlayer[]
@@ -113,4 +115,33 @@ model GameHistoryPlayer {
 
   @@index([gameHistoryId])
   @@index([playerId])
+}
+
+model FriendRequest {
+  id        String   @id @default(cuid())
+  fromId    String
+  toId      String
+  status    String   @default("pending") // pending, accepted, rejected
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  from      User     @relation("SentFriendRequests", fields: [fromId], references: [id])
+  to        User     @relation("ReceivedFriendRequests", fields: [toId], references: [id])
+
+  @@unique([fromId, toId])
+  @@index([fromId])
+  @@index([toId])
+}
+
+model Friend {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation("UserFriends", fields: [userId], references: [id])
+  friend    User     @relation("FriendOf", fields: [friendId], references: [id])
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
 }
