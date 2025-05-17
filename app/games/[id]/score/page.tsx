@@ -122,7 +122,9 @@ export default function ScorePage({ params, searchParams }: PageProps) {
         if (scoresResponse.ok) {
           const scoreData = await scoresResponse.json();
           setScoreData(scoreData);
-          setCurrentRound(scoreData.rounds > 0 ? scoreData.rounds : 1);
+          // 最新のスコアから局数を設定
+          const latestScore = scoreData.scores[scoreData.scores.length - 1];
+          setCurrentRound(latestScore ? latestScore.round + 1 : 1);
         }
       } catch (error) {
         console.error('Error fetching game:', error);
@@ -242,7 +244,6 @@ export default function ScorePage({ params, searchParams }: PageProps) {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1>スコア入力</h1>
-          <p className="text-muted">現在の局数: {currentRound}局</p>
         </div>
         <div>
           <button
@@ -268,6 +269,8 @@ export default function ScorePage({ params, searchParams }: PageProps) {
           <ScoreHistory
             gameId={game.id}
             onScoreUpdate={() => scoreUpdateTrigger}
+            chipEnabled={game.settings.chipEnabled}
+            chipPoints={game.settings.chipPoints}
           />
         </>
       )}

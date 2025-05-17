@@ -45,6 +45,26 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [calculatedScores, setCalculatedScores] = useState<PlayerScore[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [currentRound, setCurrentRound] = useState(1);
+
+  // 最新の局数を取得
+  useEffect(() => {
+    const fetchLatestRound = async () => {
+      try {
+        const response = await fetch(`/api/games/${gameId}/scores`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch scores');
+        }
+        const data = await response.json();
+        const latestScore = data.scores[data.scores.length - 1];
+        setCurrentRound(latestScore ? latestScore.round + 1 : 1);
+      } catch (error) {
+        console.error('Error fetching latest round:', error);
+      }
+    };
+
+    fetchLatestRound();
+  }, [gameId]);
 
   // 初期スコアの設定
   useEffect(() => {
@@ -157,13 +177,24 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
         north: numericScores[players.find(p => p.position === 'north')?.id || ''] || 0,
       };
 
+      // ヤキトリ情報を位置に基づいて変換
+      const yakitoriInfo = {
+        east: yakitori[players.find(p => p.position === 'east')?.id || ''] || false,
+        south: yakitori[players.find(p => p.position === 'south')?.id || ''] || false,
+        west: yakitori[players.find(p => p.position === 'west')?.id || ''] || false,
+        north: yakitori[players.find(p => p.position === 'north')?.id || ''] || false,
+      };
+
       const response = await fetch(`/api/games/${gameId}/scores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scores: positionScores,
+          scores: {
+            ...positionScores,
+            yakitori: yakitoriInfo
+          },
         }),
       });
 
@@ -181,6 +212,9 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
       setScores(clearedScores);
       setYakitori(clearedYakitori);
 
+      // 局数を更新
+      setCurrentRound(prev => prev + 1);
+
       // 親コンポーネントに通知
       onScoreChange(numericScores);
     } catch (error) {
@@ -193,6 +227,9 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
 
   return (
     <div className="card">
+      <div className="card-header">
+        <h5 className="card-title mb-0">スコア入力 - {currentRound}局</h5>
+      </div>
       <div className="card-body">
         <div className="table-responsive">
           <table className="table table-bordered">

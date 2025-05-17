@@ -65,9 +65,20 @@ model Score {
   south     Int
   west      Int
   north     Int
+  yakitori  Yakitori?
+  game      Game     @relation(fields: [gameId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  game      Game     @relation(fields: [gameId], references: [id])
 
   @@index([gameId])
+}
+
+model Yakitori {
+  id      String @id @default(cuid())
+  scoreId String @unique
+  east    Boolean @default(false)
+  south   Boolean @default(false)
+  west    Boolean @default(false)
+  north   Boolean @default(false)
+  score   Score  @relation(fields: [scoreId], references: [id])
 }

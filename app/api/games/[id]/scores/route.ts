@@ -8,75 +8,52 @@ export async function GET(
   request: Request,
   context: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  const gameId = context.params.id;
-
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: '認証が必要です' },
-      { status: 401 }
-    );
-  }
-
   try {
-    // プレイヤー情報を取得
-    const players = await prisma.player.findMany({
-      where: {
-        gameId,
-      },
-      orderBy: {
-        position: 'asc',
-      },
-    });
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      );
+    }
 
-    // スコアデータを取得
+    const gameId = context.params.id;
+
+    // スコアを取得（ヤキトリ情報を含む）
     const scores = await prisma.score.findMany({
-      where: {
-        gameId,
-      },
-      orderBy: {
-        round: 'asc',
-      },
+      where: { gameId },
+      orderBy: { round: 'asc' },
+      include: {
+        yakitori: true
+      }
     });
 
-    // プレイヤーごとの集計情報を作成
-    const playerStats = players.map(player => {
-      const playerScores = scores.map(score => {
-        const scoreValue = score[player.position.toLowerCase() as keyof typeof score] as number;
-        return {
-          round: score.round,
-          score: scoreValue,
-        };
-      });
+    // スコアデータを整形
+    const formattedScores = scores.map(score => ({
+      id: score.id,
+      round: score.round,
+      east: score.east,
+      south: score.south,
+      west: score.west,
+      north: score.north,
+      yakitori: score.yakitori ? {
+        east: score.yakitori.east,
+        south: score.yakitori.south,
+        west: score.yakitori.west,
+        north: score.yakitori.north,
+      } : {
+        east: false,
+        south: false,
+        west: false,
+        north: false,
+      }
+    }));
 
-      const totalScore = playerScores.reduce((sum, score) => sum + score.score, 0);
-
-      return {
-        id: player.id,
-        name: player.name,
-        position: player.position,
-        scores: playerScores,
-        totalScore,
-      };
-    });
-
-    // 順位を計算
-    const rankedPlayers = playerStats
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .map((player, index) => ({
-        ...player,
-        rank: index + 1,
-      }));
-
-    return NextResponse.json({
-      players: rankedPlayers,
-      scores,
-      rounds: scores.length,
-    });
+    return NextResponse.json({ scores: formattedScores });
   } catch (error) {
     console.error('Error fetching scores:', error);
     return NextResponse.json(
-      { error: 'スコアの取得に失敗しました' },
+      { error: 'スコアデータの取得に失敗しました' },
       { status: 500 }
     );
   }
@@ -96,7 +73,7 @@ export async function POST(
     }
 
     const { scores } = await request.json();
-    const { east, south, west, north } = scores;
+    const { east, south, west, north, yakitori } = scores;
 
     // 最新のスコアを取得
     const latestScore = await prisma.score.findFirst({
@@ -120,7 +97,18 @@ export async function POST(
         south: south || 0,
         west: west || 0,
         north: north || 0,
+        yakitori: yakitori ? {
+          create: {
+            east: yakitori.east || false,
+            south: yakitori.south || false,
+            west: yakitori.west || false,
+            north: yakitori.north || false,
+          }
+        } : undefined
       },
+      include: {
+        yakitori: true
+      }
     });
 
     return NextResponse.json(score);
