@@ -40,18 +40,22 @@ model Game {
   updatedAt       DateTime @updatedAt
   players         Player[]
   scores          Score[]
+  history         GameHistory?
 }
 
 model Player {
   id        String   @id @default(cuid())
-  name      String
-  position  String
   gameId    String
   userId    String?
-  game      Game     @relation(fields: [gameId], references: [id])
+  name      String
+  position  String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
+  scores    Score[]
+  yakitori  Yakitori[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  history   GameHistoryPlayer[]
 
   @@index([gameId])
   @@index([userId])
@@ -81,4 +85,32 @@ model Yakitori {
   west    Boolean @default(false)
   north   Boolean @default(false)
   score   Score  @relation(fields: [scoreId], references: [id])
+}
+
+model GameHistory {
+  id        String   @id @default(cuid())
+  gameId    String   @unique
+  game      Game     @relation(fields: [gameId], references: [id])
+  status    String   @default("draft") // draft, completed
+  players   GameHistoryPlayer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gameId])
+}
+
+model GameHistoryPlayer {
+  id            String      @id @default(cuid())
+  gameHistoryId String
+  gameHistory   GameHistory @relation(fields: [gameHistoryId], references: [id])
+  playerId      String
+  player        Player      @relation(fields: [playerId], references: [id])
+  name          String
+  totalScore    Int
+  rank          Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([gameHistoryId])
+  @@index([playerId])
 }

@@ -1,13 +1,16 @@
+import type { Metadata } from 'next';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import { Inter } from 'next/font/google';
-import Providers from './providers';
 import './globals.css';
+import Header from './components/Header';
+import Providers from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata = {
-  title: 'Jongreco - 麻雀得点集計アプリ',
-  description: '麻雀の得点を簡単に集計・分析できるアプリケーション',
+export const metadata: Metadata = {
+  title: 'JongReco',
+  description: '麻雀のスコア管理アプリケーション',
 };
 
 export default function RootLayout({
@@ -19,9 +22,10 @@ export default function RootLayout({
     <html lang="ja">
       <body className={inter.className}>
         <Providers>
-          <div className="container">
+          <Header />
+          <main className="container py-4">
             {children}
-          </div>
+          </main>
         </Providers>
       </body>
     </html>

@@ -1,31 +1,28 @@
 'use client';
 
-import { useState } from 'react';
-import GameSetupModal from '../components/GameSetupModal';
+import NewGameSection from './components/NewGameSection';
+import GameHistoryList from './components/GameHistoryList';
 
 export default function DashboardPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
   return (
-    <div className="container mt-4">
-      <h1>ダッシュボード</h1>
-      <div className="mb-4">
-        <button
-          className="btn btn-primary"
-          onClick={() => setIsModalOpen(true)}
-        >
-          新規対局作成
-        </button>
-      </div>
-      <div>
-        <h2>過去の対局</h2>
-        <p>（今後ここに対局履歴が表示されます）</p>
+    <div className="container py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1>ダッシュボード</h1>
       </div>
 
-      <GameSetupModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      <div className="row">
+        <div className="col-md-4">
+          <NewGameSection />
+        </div>
+        <div className="col-md-8">
+          <div className="card">
+            <div className="card-body">
+              <h2 className="card-title h4 mb-4">対局履歴</h2>
+              <GameHistoryList />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 } 

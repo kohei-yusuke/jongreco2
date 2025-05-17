@@ -33,12 +33,12 @@ interface Score {
   north: number;
 }
 
-interface ScoreGraphProps {
+interface TotalScoreGraphProps {
   gameId: string;
   onScoreUpdate?: () => void;
 }
 
-export default function ScoreGraph({ gameId, onScoreUpdate }: ScoreGraphProps) {
+export default function TotalScoreGraph({ gameId, onScoreUpdate }: TotalScoreGraphProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export default function ScoreGraph({ gameId, onScoreUpdate }: ScoreGraphProps) {
   }
 
   // 累計スコアを計算
-  const cumulativeScores = scores.reduce((acc, score) => {
+  const totalScores = scores.reduce((acc, score) => {
     const lastScores = acc.length > 0 ? acc[acc.length - 1] : { east: 0, south: 0, west: 0, north: 0 };
     acc.push({
       east: lastScores.east + score.east,
@@ -106,28 +106,28 @@ export default function ScoreGraph({ gameId, onScoreUpdate }: ScoreGraphProps) {
     datasets: [
       {
         label: '東家',
-        data: cumulativeScores.map(score => score.east),
+        data: totalScores.map(score => score.east),
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.5)',
         tension: 0.1,
       },
       {
         label: '南家',
-        data: cumulativeScores.map(score => score.south),
+        data: totalScores.map(score => score.south),
         borderColor: 'rgb(53, 162, 235)',
         backgroundColor: 'rgba(53, 162, 235, 0.5)',
         tension: 0.1,
       },
       {
         label: '西家',
-        data: cumulativeScores.map(score => score.west),
+        data: totalScores.map(score => score.west),
         borderColor: 'rgb(75, 192, 192)',
         backgroundColor: 'rgba(75, 192, 192, 0.5)',
         tension: 0.1,
       },
       {
         label: '北家',
-        data: cumulativeScores.map(score => score.north),
+        data: totalScores.map(score => score.north),
         borderColor: 'rgb(255, 205, 86)',
         backgroundColor: 'rgba(255, 205, 86, 0.5)',
         tension: 0.1,
@@ -143,7 +143,7 @@ export default function ScoreGraph({ gameId, onScoreUpdate }: ScoreGraphProps) {
       },
       title: {
         display: true,
-        text: 'スコア推移',
+        text: '累計得点推移',
       },
     },
     scales: {

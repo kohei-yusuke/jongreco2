@@ -6,6 +6,8 @@ import { use } from 'react';
 import Link from 'next/link';
 import ScoreInput from './components/ScoreInput';
 import ScoreHistory from './components/ScoreHistory';
+import ScoreGraph from './components/ScoreGraph';
+import TotalScoreGraph from './components/TotalScoreGraph';
 
 interface Player {
   id: string;
@@ -83,6 +85,7 @@ export default function ScorePage({ params, searchParams }: PageProps) {
   const [currentRound, setCurrentRound] = useState(1);
   const [scoreData, setScoreData] = useState<ScoreData | null>(null);
   const [scoreUpdateTrigger, setScoreUpdateTrigger] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -195,6 +198,37 @@ export default function ScorePage({ params, searchParams }: PageProps) {
     }
   };
 
+  const handleSaveHistory = async (status: 'draft' | 'completed') => {
+    if (!game) return;
+
+    try {
+      setIsSaving(true);
+      const response = await fetch(`/api/games/${game.id}/history`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        throw new Error('対局履歴の保存に失敗しました');
+      }
+
+      if (status === 'completed') {
+        // 対局終了の場合はダッシュボードに戻る
+        router.push('/dashboard');
+      } else {
+        alert('対局履歴を一時保存しました');
+      }
+    } catch (error) {
+      console.error('Error saving game history:', error);
+      alert('対局履歴の保存に失敗しました');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // gameSettingsの形式を変換
   const convertedGameSettings = game ? {
     initialPoints: game.settings.initialPoints,
@@ -250,30 +284,78 @@ export default function ScorePage({ params, searchParams }: PageProps) {
             className="btn btn-outline-primary me-2"
             onClick={() => setShowSettingsModal(true)}
           >
-            詳細設定
+            設定
           </button>
-          <Link href="/dashboard" className="btn btn-outline-secondary">
-            ダッシュボードに戻る
+          <Link href={`/games/${game.id}`} className="btn btn-outline-secondary">
+            戻る
           </Link>
         </div>
       </div>
 
-      {game && (
-        <>
+      <div className="row">
+        <div className="col-md-8">
           <ScoreInput
             gameId={game.id}
             players={game.players}
             onScoreChange={handleScoreChange}
             gameSettings={game.settings}
           />
-          <ScoreHistory
-            gameId={game.id}
-            onScoreUpdate={() => scoreUpdateTrigger}
-            chipEnabled={game.settings.chipEnabled}
-            chipPoints={game.settings.chipPoints}
-          />
-        </>
-      )}
+        </div>
+        <div className="col-md-4">
+          <div className="mb-2">
+            <ScoreGraph
+              gameId={game.id}
+              onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
+            />
+          </div>
+          <div>
+            <TotalScoreGraph
+              gameId={game.id}
+              onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <ScoreHistory
+          gameId={game.id}
+          onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
+          chipEnabled={game.settings.chipEnabled}
+          chipPoints={game.settings.chipPoints}
+        />
+      </div>
+
+      <div className="mt-4 d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-outline-primary"
+          onClick={() => handleSaveHistory('draft')}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              保存中...
+            </>
+          ) : (
+            '一時保存'
+          )}
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => handleSaveHistory('completed')}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              保存中...
+            </>
+          ) : (
+            '対局終了'
+          )}
+        </button>
+      </div>
 
       {/* 詳細設定モーダル */}
       {showSettingsModal && game && (

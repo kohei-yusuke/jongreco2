@@ -1,7 +1,33 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-import prisma from '../../../lib/prisma';
+import prisma from '@/lib/prisma';
+
+interface Player {
+  id?: string;
+  name: string;
+}
+
+interface GameRequest {
+  players: {
+    east: Player;
+    south: Player;
+    west: Player;
+    north: Player;
+  };
+  settings: {
+    initialPoints: number;
+    returnPoints: number;
+    uma1: number;
+    uma2: number;
+    uma3: number;
+    uma4: number;
+    chipPoints: number;
+    chipEnabled: boolean;
+    yakitoriPoints: number;
+    yakitoriEnabled: boolean;
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -12,12 +38,17 @@ export async function POST(request: Request) {
       return new NextResponse('認証が必要です。ログインしてください。', { status: 401 });
     }
 
-    const body = await request.json();
-    const { players, settings } = body;
+    const { players, settings } = await request.json() as GameRequest;
 
-    // 入力値のバリデーション
-    if (!players.east || !players.south || !players.west || !players.north) {
-      return new NextResponse('プレイヤー名は必須です', { status: 400 });
+    // プレイヤー情報のバリデーション
+    const playerEntries = Object.entries(players);
+    for (const [position, player] of playerEntries) {
+      if (!player.name) {
+        return NextResponse.json(
+          { error: `${position}のプレイヤー名を入力してください` },
+          { status: 400 }
+        );
+      }
     }
 
     // 対局データを作成
@@ -35,29 +66,44 @@ export async function POST(request: Request) {
         yakitoriEnabled: settings.yakitoriEnabled,
         players: {
           create: [
-            { name: players.east, position: '東' },
-            { name: players.south, position: '南' },
-            { name: players.west, position: '西' },
-            { name: players.north, position: '北' },
+            {
+              name: players.east.name,
+              position: 'east',
+              userId: players.east.id || null,
+            },
+            {
+              name: players.south.name,
+              position: 'south',
+              userId: players.south.id || null,
+            },
+            {
+              name: players.west.name,
+              position: 'west',
+              userId: players.west.id || null,
+            },
+            {
+              name: players.north.name,
+              position: 'north',
+              userId: players.north.id || null,
+            },
           ],
+        },
+      },
+      include: {
+        players: {
+          include: {
+            user: true,
+          },
         },
       },
     });
 
     return NextResponse.json(game);
   } catch (error) {
-    console.error('対局作成エラー:', error);
-    return new NextResponse(
-      JSON.stringify({
-        error: '対局の作成に失敗しました',
-        details: error instanceof Error ? error.message : '不明なエラーが発生しました',
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    console.error('Error creating game:', error);
+    return NextResponse.json(
+      { error: '対局の作成に失敗しました' },
+      { status: 500 }
     );
   }
 } 
