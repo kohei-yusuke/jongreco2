@@ -117,15 +117,22 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
 
     setScores(prev => {
       const newScores = { ...prev, [playerId]: value };
-      // 数値に変換して親コンポーネントに通知
+      return newScores;
+    });
+  }, []);
+
+  // スコアの変更を親コンポーネントに通知（デバウンス処理を追加）
+  useEffect(() => {
+    const timer = setTimeout(() => {
       const numericScores: Record<string, number> = {};
-      Object.entries(newScores).forEach(([id, score]) => {
+      Object.entries(scores).forEach(([id, score]) => {
         numericScores[id] = score === '' ? 0 : parseInt(score, 10);
       });
       onScoreChange(numericScores);
-      return newScores;
-    });
-  }, [onScoreChange]);
+    }, 1500); // 1.5秒のデバウンス
+
+    return () => clearTimeout(timer);
+  }, [scores, onScoreChange]);
 
   const handleYakitoriChange = useCallback((playerId: string, checked: boolean) => {
     setYakitori(prev => ({ ...prev, [playerId]: checked }));
@@ -142,14 +149,21 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
         numericScores[id] = score === '' ? 0 : parseInt(score, 10);
       });
 
+      // プレイヤーの位置に基づいてスコアを変換
+      const positionScores = {
+        east: numericScores[players.find(p => p.position === 'east')?.id || ''] || 0,
+        south: numericScores[players.find(p => p.position === 'south')?.id || ''] || 0,
+        west: numericScores[players.find(p => p.position === 'west')?.id || ''] || 0,
+        north: numericScores[players.find(p => p.position === 'north')?.id || ''] || 0,
+      };
+
       const response = await fetch(`/api/games/${gameId}/scores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scores: numericScores,
-          yakitori: yakitori,
+          scores: positionScores,
         }),
       });
 
@@ -157,7 +171,6 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
         throw new Error('Failed to save scores');
       }
 
-      router.refresh();
       // 入力フィールドをクリア
       const clearedScores: Record<string, string> = {};
       const clearedYakitori: Record<string, boolean> = {};
@@ -167,6 +180,9 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
       });
       setScores(clearedScores);
       setYakitori(clearedYakitori);
+
+      // 親コンポーネントに通知
+      onScoreChange(numericScores);
     } catch (error) {
       console.error('Error saving scores:', error);
       alert('スコアの保存に失敗しました');

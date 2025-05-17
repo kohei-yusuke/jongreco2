@@ -117,8 +117,8 @@ export default function GameSetupModal({ isOpen, onClose }: GameSetupModalProps)
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to create game');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.details || `対局の作成に失敗しました: ${response.status}`);
       }
 
       const game = await response.json();

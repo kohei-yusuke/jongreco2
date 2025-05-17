@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
 import Link from 'next/link';
 import ScoreInput from './components/ScoreInput';
+import ScoreHistory from './components/ScoreHistory';
 
 interface Player {
   id: string;
@@ -33,6 +34,33 @@ interface Game {
     chipEnabled: boolean;
     yakitoriEnabled: boolean;
   };
+  currentRound: number;
+}
+
+interface PlayerStats {
+  id: string;
+  name: string;
+  position: string;
+  scores: {
+    round: number;
+    score: number;
+  }[];
+  totalScore: number;
+  rank: number;
+}
+
+interface Score {
+  id: string;
+  round: number;
+  east: number;
+  south: number;
+  west: number;
+  north: number;
+}
+
+interface ScoreData {
+  scores: Score[];
+  players: PlayerStats[];
 }
 
 interface PageProps {
@@ -52,6 +80,9 @@ export default function ScorePage({ params, searchParams }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [scoreData, setScoreData] = useState<ScoreData | null>(null);
+  const [scoreUpdateTrigger, setScoreUpdateTrigger] = useState(0);
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -85,6 +116,14 @@ export default function ScorePage({ params, searchParams }: PageProps) {
         const data = await response.json();
         console.log('Received game data from API:', data);
         setGame(data);
+
+        // スコアデータを取得
+        const scoresResponse = await fetch(`/api/games/${resolvedParams.id}/scores`);
+        if (scoresResponse.ok) {
+          const scoreData = await scoresResponse.json();
+          setScoreData(scoreData);
+          setCurrentRound(scoreData.rounds > 0 ? scoreData.rounds : 1);
+        }
       } catch (error) {
         console.error('Error fetching game:', error);
         setError(error instanceof Error ? error.message : 'ゲーム情報の取得に失敗しました');
@@ -96,10 +135,75 @@ export default function ScorePage({ params, searchParams }: PageProps) {
     fetchGame();
   }, [resolvedParams.id, resolvedSearchParams]);
 
-  const handleScoreChange = (scores: Record<string, number>) => {
-    // スコアの変更を処理する必要がある場合はここで実装
-    console.log('Scores changed:', scores);
+  const handleScoreChange = useCallback((scores: Record<string, number>) => {
+    if (!game) return;
+
+    // スコアデータを更新
+    const updatedScores = {
+      id: Date.now().toString(), // 一時的なID
+      round: currentRound,
+      east: scores[game.players.find(p => p.position === 'east')?.id || ''] || 0,
+      south: scores[game.players.find(p => p.position === 'south')?.id || ''] || 0,
+      west: scores[game.players.find(p => p.position === 'west')?.id || ''] || 0,
+      north: scores[game.players.find(p => p.position === 'north')?.id || ''] || 0,
+    };
+
+    setScoreData(prev => prev ? {
+      ...prev,
+      scores: [...prev.scores, updatedScores],
+    } : {
+      scores: [updatedScores],
+      players: [],
+    });
+  }, [game, currentRound]);
+
+  const handleScoreSubmit = async () => {
+    if (!game) return;
+
+    try {
+      const response = await fetch(`/api/games/${game.id}/scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          scores: scoreData?.scores,
+          round: currentRound,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('スコアの登録に失敗しました');
+      }
+
+      // スコアデータを再取得
+      const scoresResponse = await fetch(`/api/games/${game.id}/scores`);
+      if (scoresResponse.ok) {
+        const updatedScoreData = await scoresResponse.json();
+        setScoreData(updatedScoreData);
+        setCurrentRound(prev => prev + 1);
+        // スコア履歴の更新をトリガー
+        setScoreUpdateTrigger(prev => prev + 1);
+      } else {
+        throw new Error('スコアデータの取得に失敗しました');
+      }
+    } catch (error) {
+      console.error('スコア登録エラー:', error);
+      alert('スコアの登録に失敗しました。もう一度お試しください。');
+    }
   };
+
+  // gameSettingsの形式を変換
+  const convertedGameSettings = game ? {
+    initialPoints: game.settings.initialPoints,
+    returnPoints: game.settings.returnPoints,
+    uma1: game.settings.uma.first,
+    uma2: game.settings.uma.second,
+    uma3: game.settings.uma.third,
+    uma4: game.settings.uma.fourth,
+    yakitoriPoints: game.settings.yakitori,
+    yakitoriEnabled: game.settings.yakitoriEnabled,
+  } : null;
 
   if (loading) {
     return (
@@ -136,7 +240,10 @@ export default function ScorePage({ params, searchParams }: PageProps) {
   return (
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>スコア入力</h1>
+        <div>
+          <h1>スコア入力</h1>
+          <p className="text-muted">現在の局数: {currentRound}局</p>
+        </div>
         <div>
           <button
             className="btn btn-outline-primary me-2"
@@ -157,6 +264,10 @@ export default function ScorePage({ params, searchParams }: PageProps) {
             players={game.players}
             onScoreChange={handleScoreChange}
             gameSettings={game.settings}
+          />
+          <ScoreHistory
+            gameId={game.id}
+            onScoreUpdate={() => scoreUpdateTrigger}
           />
         </>
       )}

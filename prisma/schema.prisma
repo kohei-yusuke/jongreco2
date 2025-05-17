@@ -25,6 +25,7 @@ model User {
 
 model Game {
   id              String   @id @default(cuid())
+  name            String   @default("新規対局")
   initialPoints   Int
   returnPoints    Int
   uma1            Int

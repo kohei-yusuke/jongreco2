@@ -6,9 +6,10 @@ import prisma from '@/lib/prisma';
 // スコアデータの取得
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions);
+  const gameId = context.params.id;
 
   if (!session?.user) {
     return NextResponse.json(
@@ -18,16 +19,60 @@ export async function GET(
   }
 
   try {
-    const scores = await prisma.score.findMany({
+    // プレイヤー情報を取得
+    const players = await prisma.player.findMany({
       where: {
-        gameId: params.id,
+        gameId,
       },
       orderBy: {
-        createdAt: 'asc',
+        position: 'asc',
       },
     });
 
-    return NextResponse.json(scores);
+    // スコアデータを取得
+    const scores = await prisma.score.findMany({
+      where: {
+        gameId,
+      },
+      orderBy: {
+        round: 'asc',
+      },
+    });
+
+    // プレイヤーごとの集計情報を作成
+    const playerStats = players.map(player => {
+      const playerScores = scores.map(score => {
+        const scoreValue = score[player.position.toLowerCase() as keyof typeof score] as number;
+        return {
+          round: score.round,
+          score: scoreValue,
+        };
+      });
+
+      const totalScore = playerScores.reduce((sum, score) => sum + score.score, 0);
+
+      return {
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        scores: playerScores,
+        totalScore,
+      };
+    });
+
+    // 順位を計算
+    const rankedPlayers = playerStats
+      .sort((a, b) => b.totalScore - a.totalScore)
+      .map((player, index) => ({
+        ...player,
+        rank: index + 1,
+      }));
+
+    return NextResponse.json({
+      players: rankedPlayers,
+      scores,
+      rounds: scores.length,
+    });
   } catch (error) {
     console.error('Error fetching scores:', error);
     return NextResponse.json(
@@ -40,10 +85,12 @@ export async function GET(
 // スコアデータの作成
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
+    const gameId = context.params.id;
+
     if (!session?.user) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
@@ -54,7 +101,7 @@ export async function POST(
     // 最新のスコアを取得
     const latestScore = await prisma.score.findFirst({
       where: {
-        gameId: params.id,
+        gameId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -67,7 +114,7 @@ export async function POST(
     // スコアを作成
     const score = await prisma.score.create({
       data: {
-        gameId: params.id,
+        gameId,
         round,
         east: east || 0,
         south: south || 0,

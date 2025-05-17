@@ -47,6 +47,17 @@ export async function POST(request: Request) {
     return NextResponse.json(game);
   } catch (error) {
     console.error('対局作成エラー:', error);
-    return new NextResponse('対局の作成に失敗しました。もう一度お試しください。', { status: 500 });
+    return new NextResponse(
+      JSON.stringify({
+        error: '対局の作成に失敗しました',
+        details: error instanceof Error ? error.message : '不明なエラーが発生しました',
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   }
 } 

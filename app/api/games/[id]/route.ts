@@ -26,6 +26,7 @@ interface Game {
   umaFourth: number;
   initialPoints: number;
   returnPoints: number;
+  currentRound: number;
 }
 
 export async function GET(
@@ -52,12 +53,21 @@ export async function GET(
             user: true,
           },
         },
+        scores: {
+          orderBy: {
+            round: 'desc',
+          },
+          take: 1,
+        },
       },
     });
 
     if (!game) {
       return new NextResponse('Game not found', { status: 404 });
     }
+
+    // 最新の局数を取得
+    const currentRound = game.scores[0]?.round || 0;
 
     // プレイヤー情報を整形
     const formattedPlayers = game.players.map(player => ({
@@ -72,10 +82,10 @@ export async function GET(
     // ゲーム設定を整形
     const settings = {
       uma: {
-        first: game.umaFirst || 0,
-        second: game.umaSecond || 0,
-        third: game.umaThird || 0,
-        fourth: game.umaFourth || 0,
+        first: game.uma1 || 0,
+        second: game.uma2 || 0,
+        third: game.uma3 || 0,
+        fourth: game.uma4 || 0,
       },
       yakitori: game.yakitoriPoints || 0,
       initialPoints: game.initialPoints || 0,
@@ -87,6 +97,7 @@ export async function GET(
       name: game.name,
       players: formattedPlayers,
       settings,
+      currentRound,
     });
   } catch (error) {
     console.error('Error fetching game:', error);
