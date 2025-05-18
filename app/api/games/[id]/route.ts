@@ -7,6 +7,8 @@ import { Game, Player, Score } from '@prisma/client';
 interface PlayerWithUser extends Player {
   user: {
     name: string | null;
+    image: string | null;
+    iconPath: string | null;
   } | null;
 }
 
@@ -64,6 +66,7 @@ export async function GET(
       position: player.position,
       user: player.user ? {
         name: player.user.name,
+        iconPath: player.user.iconPath,
       } : null,
     }));
 

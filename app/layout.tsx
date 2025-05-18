@@ -3,15 +3,15 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import Header from './components/Header';
 import Providers from './providers';
+import Header from './components/Header';
 import Script from 'next/script';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'JongReco',
-  description: '麻雀のスコア管理アプリケーション',
+  title: '麻雀スコア管理',
+  description: '麻雀のスコアを管理するアプリケーション',
 };
 
 export default function RootLayout({
@@ -24,11 +24,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <Header />
-          <main className="container py-4">
-            {children}
-          </main>
+          <main>{children}</main>
         </Providers>
-        <Script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+          async
+        />
       </body>
     </html>
   );

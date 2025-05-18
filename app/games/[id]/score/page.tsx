@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { use } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import ScoreInput from './components/ScoreInput';
 import ScoreHistory from './components/ScoreHistory';
@@ -70,15 +69,13 @@ interface PageProps {
   params: Promise<{
     id: string;
   }>;
-  searchParams: Promise<{
-    gameData?: string;
-  }>;
 }
 
-export default function ScorePage({ params, searchParams }: PageProps) {
-  const router = useRouter();
+export default function ScorePage({ params }: PageProps) {
   const resolvedParams = use(params);
-  const resolvedSearchParams = use(searchParams);
+  const router = useRouter();
+  const pathname = usePathname();
+  const gameId = pathname.split('/')[2]; // /games/[id]/... から id を取得
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -91,7 +88,7 @@ export default function ScorePage({ params, searchParams }: PageProps) {
   useEffect(() => {
     const fetchGame = async () => {
       try {
-        const response = await fetch(`/api/games/${resolvedParams.id}`);
+        const response = await fetch(`/api/games/${gameId}`);
         if (!response.ok) {
           throw new Error('対局情報の取得に失敗しました');
         }
@@ -105,10 +102,10 @@ export default function ScorePage({ params, searchParams }: PageProps) {
       }
     };
 
-    if (resolvedParams.id) {
+    if (gameId) {
       fetchGame();
     }
-  }, [resolvedParams.id]);
+  }, [gameId]);
 
   const handleScoreChange = useCallback((scores: Record<string, number>) => {
     if (!game) return;
@@ -269,8 +266,11 @@ export default function ScorePage({ params, searchParams }: PageProps) {
   return (
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1>スコア入力</h1>
+        <div className="d-flex align-items-center">
+          <h1 className="mb-0">スコア入力</h1>
+          <span className="ms-3 text-muted" style={{ fontSize: '1.2rem' }}>
+            対局ID: {game.id}
+          </span>
         </div>
         <div>
           <button
