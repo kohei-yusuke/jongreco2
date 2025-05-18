@@ -1,14 +1,36 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      );
+    }
+
     const histories = await prisma.gameHistory.findMany({
+      where: {
+        players: {
+          some: {
+            player: {
+              userId: session.user.id
+            }
+          }
+        }
+      },
       include: {
         players: {
           orderBy: {
             rank: 'asc',
           },
+          include: {
+            player: true
+          }
         },
       },
       orderBy: {
