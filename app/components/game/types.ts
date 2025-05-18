@@ -1,12 +1,5 @@
-export type PlayerType = 'friend' | 'id' | 'email' | 'manual';
 export type Position = 'east' | 'south' | 'west' | 'north';
-
-export interface Friend {
-  friend: {
-    id: string;
-    name: string | null;
-  };
-}
+export type PlayerType = 'manual' | 'friend' | 'id' | 'email';
 
 export interface Player {
   id: string;
@@ -18,8 +11,30 @@ export interface Player {
   isCurrentUser: boolean;
 }
 
+export interface Friend {
+  friend: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  };
+}
+
 export interface GameStartModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStart: (players: { name: string; userId?: string; position: Position }[]) => void;
+  onStart: (players: Player[], settings: GameSettings) => void;
+}
+
+export interface GameSettings {
+  initialPoints: number;
+  returnPoints: number;
+  chipPoints: number;
+  yakitoriPoints: number;
+  uma1: number;
+  uma2: number;
+  uma3: number;
+  uma4: number;
+  chipEnabled: boolean;
+  yakitoriEnabled: boolean;
+  yakitoriMode: 'distribution' | 'winner_takes_all'; // 'distribution': 分配モード, 'winner_takes_all': 総どりモード
 } 

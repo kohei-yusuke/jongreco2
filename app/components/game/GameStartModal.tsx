@@ -4,7 +4,8 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Alert from 'react-bootstrap/Alert';
 import { useSession } from 'next-auth/react';
-import { Player, PlayerType, Position, Friend, GameStartModalProps } from './types';
+import { Player, PlayerType, Position, Friend, GameStartModalProps, GameSettings } from './types';
+import GameSettingsModal from './GameSettingsModal';
 
 const POSITION_LABELS: Record<Position, string> = {
   east: '東家',
@@ -121,6 +122,21 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [showSettings, setShowSettings] = useState(false);
+  const [validPlayers, setValidPlayers] = useState<Player[]>([]);
+  const [gameSettings, setGameSettings] = useState<GameSettings>({
+    initialPoints: 25000,
+    returnPoints: 30000,
+    chipPoints: 0,
+    yakitoriPoints: 2000,
+    uma1: 20,
+    uma2: 10,
+    uma3: -10,
+    uma4: -20,
+    chipEnabled: false,
+    yakitoriEnabled: false,
+    yakitoriMode: 'distribution'
+  });
 
   useEffect(() => {
     if (isOpen && session?.user) {
@@ -298,32 +314,47 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 全プレイヤーのバリデーション
-    const allErrors: Record<string, string[]> = {};
-    let hasErrors = false;
+    setLoading(true);
+    setErrors({});
 
-    players.forEach(player => {
-      const playerErrors = validatePlayer(player, players);
-      if (playerErrors.length > 0) {
-        allErrors[player.id] = playerErrors;
-        hasErrors = true;
+    try {
+      // プレイヤー情報の検証
+      const validPlayers = players.filter(p => p.name.trim() !== '');
+      console.log('検証前のプレイヤー情報:', players);
+      console.log('検証後のプレイヤー情報:', validPlayers);
+
+      if (validPlayers.length !== 4) {
+        throw new Error('プレイヤーは4人必要です');
       }
-    });
 
-    if (hasErrors) {
-      setErrors(allErrors);
+      // プレイヤー情報を保存
+      setValidPlayers(validPlayers);
+      console.log('保存されたプレイヤー情報:', validPlayers);
+
+      // 設定モーダルを表示
+      setShowSettings(true);
+    } catch (error) {
+      console.error('プレイヤー検証エラー:', error);
+      setErrors({
+        global: [error instanceof Error ? error.message : 'プレイヤー情報の検証に失敗しました']
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSettingsSubmit = (settings: GameSettings) => {
+    console.log('設定モーダルからのデータ:', { players: validPlayers, settings });
+    if (validPlayers.length !== 4) {
+      setErrors({
+        global: ['プレイヤーは4人必要です']
+      });
+      setShowSettings(false);
       return;
     }
-
-    const validPlayers = players.map(player => ({
-      name: player.name || '',
-      userId: player.userId,
-      position: player.position
-    }));
-    onStart(validPlayers);
+    onStart(validPlayers, settings);
   };
 
   if (!isOpen || !session?.user || players.length === 0) {
@@ -331,153 +362,162 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
   }
 
   return (
-    <Modal show={isOpen} onHide={onClose} centered size="lg">
-      <Modal.Header closeButton>
-        <Modal.Title>対局を開始</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <Form onSubmit={handleSubmit}>
-          <div className="position-relative">
-            <div className="row g-3">
-              {players.map((player, index) => (
-                <div key={player.id} className="col-6">
-                  <div className="card h-100">
-                    <div className="card-body">
-                      <h5 className="card-title mb-3">{POSITION_LABELS[player.position]}</h5>
-                      <Form.Select
-                        className="mb-2"
-                        value={player.type}
-                        onChange={(e) => handlePlayerTypeChange(index, e.target.value as PlayerType)}
-                        disabled={player.isCurrentUser}
-                      >
-                        <option value="manual">手動入力</option>
-                        <option value="friend">フレンドから選択</option>
-                        <option value="id">ユーザーIDで指定</option>
-                        <option value="email">メールアドレスで指定</option>
-                      </Form.Select>
-
-                      {player.type === 'friend' && (
+    <>
+      <Modal show={isOpen && !showSettings} onHide={onClose} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>対局を開始</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <form onSubmit={handleSubmit}>
+            <div className="position-relative">
+              <div className="row g-3">
+                {players.map((player, index) => (
+                  <div key={player.id} className="col-6">
+                    <div className="card h-100">
+                      <div className="card-body">
+                        <h5 className="card-title mb-3">{POSITION_LABELS[player.position]}</h5>
                         <Form.Select
-                          value={player.userId || ''}
-                          onChange={(e) => {
-                            const friend = friends.find(f => f.friend.id === e.target.value);
-                            if (friend) handleFriendSelect(index, friend);
-                          }}
-                          onBlur={() => handlePlayerBlur(index)}
+                          className="mb-2"
+                          value={player.type}
+                          onChange={(e) => handlePlayerTypeChange(index, e.target.value as PlayerType)}
                           disabled={player.isCurrentUser}
-                          isInvalid={!!errors[player.id]?.length}
                         >
-                          <option value="">フレンドを選択</option>
-                          {friends.map((friend) => (
-                            <option key={friend.friend.id} value={friend.friend.id}>
-                              {friend.friend.name || '名無し'} @{friend.friend.id}
-                            </option>
-                          ))}
+                          <option value="manual">手動入力</option>
+                          <option value="friend">フレンドから選択</option>
+                          <option value="id">ユーザーIDで指定</option>
+                          <option value="email">メールアドレスで指定</option>
                         </Form.Select>
-                      )}
 
-                      {player.type === 'id' && (
-                        <Form.Control
-                          type="text"
-                          placeholder="ユーザーID"
-                          value={player.userId || ''}
-                          onChange={(e) => handlePlayerChange(index, 'userId', e.target.value)}
-                          onBlur={() => handlePlayerBlur(index)}
-                          disabled={player.isCurrentUser}
-                          isInvalid={!!errors[player.id]?.length}
-                        />
-                      )}
+                        {player.type === 'friend' && (
+                          <Form.Select
+                            value={player.userId || ''}
+                            onChange={(e) => {
+                              const friend = friends.find(f => f.friend.id === e.target.value);
+                              if (friend) handleFriendSelect(index, friend);
+                            }}
+                            onBlur={() => handlePlayerBlur(index)}
+                            disabled={player.isCurrentUser}
+                            isInvalid={!!errors[player.id]?.length}
+                          >
+                            <option value="">フレンドを選択</option>
+                            {friends.map((friend) => (
+                              <option key={friend.friend.id} value={friend.friend.id}>
+                                {friend.friend.name || '名無し'} @{friend.friend.id}
+                              </option>
+                            ))}
+                          </Form.Select>
+                        )}
 
-                      {player.type === 'email' && (
-                        <Form.Control
-                          type="email"
-                          placeholder="メールアドレス"
-                          value={player.email || ''}
-                          onChange={(e) => handlePlayerChange(index, 'email', e.target.value)}
-                          onBlur={() => handlePlayerBlur(index)}
-                          disabled={player.isCurrentUser}
-                          isInvalid={!!errors[player.id]?.length}
-                        />
-                      )}
+                        {player.type === 'id' && (
+                          <Form.Control
+                            type="text"
+                            placeholder="ユーザーID"
+                            value={player.userId || ''}
+                            onChange={(e) => handlePlayerChange(index, 'userId', e.target.value)}
+                            onBlur={() => handlePlayerBlur(index)}
+                            disabled={player.isCurrentUser}
+                            isInvalid={!!errors[player.id]?.length}
+                          />
+                        )}
 
-                      {player.type === 'manual' && (
-                        <Form.Control
-                          type="text"
-                          placeholder="プレイヤー名"
-                          value={player.name}
-                          onChange={(e) => handlePlayerChange(index, 'name', e.target.value)}
-                          onBlur={() => handlePlayerBlur(index)}
-                          disabled={player.isCurrentUser}
-                          isInvalid={!!errors[player.id]?.length}
-                        />
-                      )}
+                        {player.type === 'email' && (
+                          <Form.Control
+                            type="email"
+                            placeholder="メールアドレス"
+                            value={player.email || ''}
+                            onChange={(e) => handlePlayerChange(index, 'email', e.target.value)}
+                            onBlur={() => handlePlayerBlur(index)}
+                            disabled={player.isCurrentUser}
+                            isInvalid={!!errors[player.id]?.length}
+                          />
+                        )}
 
-                      {errors[player.id]?.length > 0 && (
-                        <Alert variant="danger" className="mt-2">
-                          {errors[player.id].map((error, i) => (
-                            <div key={i}>{error}</div>
-                          ))}
-                        </Alert>
-                      )}
+                        {player.type === 'manual' && (
+                          <Form.Control
+                            type="text"
+                            placeholder="プレイヤー名"
+                            value={player.name}
+                            onChange={(e) => handlePlayerChange(index, 'name', e.target.value)}
+                            onBlur={() => handlePlayerBlur(index)}
+                            disabled={player.isCurrentUser}
+                            isInvalid={!!errors[player.id]?.length}
+                          />
+                        )}
+
+                        {errors[player.id]?.length > 0 && (
+                          <Alert variant="danger" className="mt-2">
+                            {errors[player.id].map((error, i) => (
+                              <div key={i}>{error}</div>
+                            ))}
+                          </Alert>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* 位置変更ボタン */}
-            <div className="position-absolute" style={{ 
-              top: '50%', 
-              left: '50%', 
-              transform: 'translate(-50%, -50%)',
-              width: '100%',
-              height: '100%',
-              pointerEvents: 'none'
-            }}>
-              <div className="d-flex flex-column align-items-center justify-content-center h-100">
-                <div className="d-flex align-items-center gap-4 mb-4">
-                  <div style={{ pointerEvents: 'auto' }}>
-                    <PositionSwapButton
-                      direction="horizontal"
-                      onClick={() => swapPositions(0, 1)} // 東と南を入れ替え
-                    />
+              {/* 位置変更ボタン */}
+              <div className="position-absolute" style={{ 
+                top: '50%', 
+                left: '50%', 
+                transform: 'translate(-50%, -50%)',
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none'
+              }}>
+                <div className="d-flex flex-column align-items-center justify-content-center h-100">
+                  <div className="d-flex align-items-center gap-4 mb-4">
+                    <div style={{ pointerEvents: 'auto' }}>
+                      <PositionSwapButton
+                        direction="horizontal"
+                        onClick={() => swapPositions(0, 1)} // 東と南を入れ替え
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="d-flex align-items-center gap-4">
-                  <div style={{ pointerEvents: 'auto' }}>
-                    <PositionSwapButton
-                      direction="vertical"
-                      onClick={() => swapPositions(0, 2)} // 東と西を入れ替え
-                    />
+                  <div className="d-flex align-items-center gap-4">
+                    <div style={{ pointerEvents: 'auto' }}>
+                      <PositionSwapButton
+                        direction="vertical"
+                        onClick={() => swapPositions(0, 2)} // 東と西を入れ替え
+                      />
+                    </div>
+                    <div style={{ pointerEvents: 'auto' }}>
+                      <PositionSwapButton
+                        direction="vertical"
+                        onClick={() => swapPositions(1, 3)} // 南と北を入れ替え
+                      />
+                    </div>
                   </div>
-                  <div style={{ pointerEvents: 'auto' }}>
-                    <PositionSwapButton
-                      direction="vertical"
-                      onClick={() => swapPositions(1, 3)} // 南と北を入れ替え
-                    />
-                  </div>
-                </div>
-                <div className="d-flex align-items-center gap-4 mt-4">
-                  <div style={{ pointerEvents: 'auto' }}>
-                    <PositionSwapButton
-                      direction="horizontal"
-                      onClick={() => swapPositions(2, 3)} // 西と北を入れ替え
-                    />
+                  <div className="d-flex align-items-center gap-4 mt-4">
+                    <div style={{ pointerEvents: 'auto' }}>
+                      <PositionSwapButton
+                        direction="horizontal"
+                        onClick={() => swapPositions(2, 3)} // 西と北を入れ替え
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="mt-3 text-end">
-            <Button variant="secondary" onClick={onClose} className="me-2">
-              キャンセル
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? '開始中...' : '対局を開始'}
-            </Button>
-          </div>
-        </Form>
-      </Modal.Body>
-    </Modal>
+            <div className="mt-3 text-end">
+              <Button variant="secondary" onClick={onClose} className="me-2">
+                キャンセル
+              </Button>
+              <Button variant="primary" type="submit" disabled={loading}>
+                {loading ? '開始中...' : '設定に進む'}
+              </Button>
+            </div>
+          </form>
+        </Modal.Body>
+      </Modal>
+
+      <GameSettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onStart={handleSettingsSubmit}
+        initialSettings={gameSettings}
+      />
+    </>
   );
 } 

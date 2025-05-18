@@ -4,16 +4,30 @@ import { useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useGameNavigation } from '../hooks/useGameNavigation';
 
-export default function Header() {
+interface HeaderProps {
+  gameId?: string;
+}
+
+export default function Header({ gameId }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { data: session } = useSession();
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/';
   const isAuthenticated = !!session?.user;
+  const { isSaving, handleSaveAndNavigate } = useGameNavigation({ gameId: gameId || '' });
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' });
+  };
+
+  const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    // ゲームページから他のページへの遷移の場合
+    if (gameId && pathname?.includes('/games/') && !pathname?.includes('/score')) {
+      e.preventDefault();
+      handleSaveAndNavigate(path);
+    }
   };
 
   if (isAuthPage) {
@@ -34,7 +48,7 @@ export default function Header() {
           
           {/* デスクトップメニュー */}
           <div className="d-none d-md-flex align-items-center">
-            <Link href="/dashboard" className="text-white text-decoration-none me-3">
+            <Link href="/dashboard" className="text-white text-decoration-none me-3" onClick={(e) => handleNavigation(e, '/dashboard')}>
               ダッシュボード
             </Link>
             {isAuthenticated && (
@@ -68,7 +82,10 @@ export default function Header() {
               <Link
                 href="/dashboard"
                 className="text-white text-decoration-none mb-2"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={(e) => {
+                  handleNavigation(e, '/dashboard');
+                  setIsMenuOpen(false);
+                }}
               >
                 ダッシュボード
               </Link>
@@ -76,7 +93,10 @@ export default function Header() {
                 <Link
                   href="/profile"
                   className="text-white text-decoration-none mb-2"
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={(e) => {
+                    handleNavigation(e, '/profile');
+                    setIsMenuOpen(false);
+                  }}
                 >
                   <i className="bi bi-person-circle me-1"></i>
                   プロフィール

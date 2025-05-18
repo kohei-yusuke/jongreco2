@@ -2,31 +2,19 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import prisma from '@/lib/prisma';
+import { Game, Player, Score } from '@prisma/client';
 
-interface Player {
-  id: string;
-  position: string;
+interface PlayerWithUser extends Player {
   user: {
     name: string | null;
   } | null;
 }
 
-interface Game {
-  id: string;
-  name: string;
-  uma1: number;
-  uma2: number;
-  uma3: number;
-  uma4: number;
-  yakitoriPoints: number;
-  players: Player[];
-  umaFirst: number;
-  umaSecond: number;
-  umaThird: number;
-  umaFourth: number;
-  initialPoints: number;
-  returnPoints: number;
-  currentRound: number;
+// yakitoriModeを明示的に含める
+interface GameWithRelations extends Omit<Game, 'yakitoriMode'> {
+  yakitoriMode: string;
+  players: PlayerWithUser[];
+  scores: Score[];
 }
 
 export async function GET(
@@ -60,7 +48,7 @@ export async function GET(
           take: 1,
         },
       },
-    });
+    }) as GameWithRelations | null;
 
     if (!game) {
       return new NextResponse('Game not found', { status: 404 });
@@ -82,14 +70,18 @@ export async function GET(
     // ゲーム設定を整形
     const settings = {
       uma: {
-        first: game.uma1 || 0,
-        second: game.uma2 || 0,
-        third: game.uma3 || 0,
-        fourth: game.uma4 || 0,
+        first: game.uma1,
+        second: game.uma2,
+        third: game.uma3,
+        fourth: game.uma4,
       },
-      yakitori: game.yakitoriPoints || 0,
-      initialPoints: game.initialPoints || 0,
-      returnPoints: game.returnPoints || 0,
+      yakitori: game.yakitoriPoints,
+      initialPoints: game.initialPoints,
+      returnPoints: game.returnPoints,
+      chipPoints: game.chipPoints,
+      chipEnabled: game.chipEnabled,
+      yakitoriEnabled: game.yakitoriEnabled,
+      yakitoriMode: game.yakitoriMode,
     };
 
     return NextResponse.json({

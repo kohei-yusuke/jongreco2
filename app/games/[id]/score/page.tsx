@@ -35,6 +35,7 @@ interface Game {
     chipPoints: number;
     chipEnabled: boolean;
     yakitoriEnabled: boolean;
+    yakitoriMode: string;
   };
   currentRound: number;
 }
@@ -90,55 +91,24 @@ export default function ScorePage({ params, searchParams }: PageProps) {
   useEffect(() => {
     const fetchGame = async () => {
       try {
-        setError(null);
-        // URLパラメータからゲームデータを取得
-        if (resolvedSearchParams?.gameData) {
-          console.log('Received gameData from URL:', resolvedSearchParams.gameData);
-          const gameData = JSON.parse(decodeURIComponent(resolvedSearchParams.gameData));
-          console.log('Parsed gameData:', gameData);
-
-          // プレイヤーデータが既に配列形式になっていることを確認
-          if (Array.isArray(gameData.players)) {
-            console.log('Setting game data:', gameData);
-            setGame(gameData);
-          } else {
-            console.error('Invalid game data format:', gameData);
-            setError('ゲームデータの形式が不正です');
-          }
-          setLoading(false);
-          return;
-        }
-
-        // 通常のAPIリクエスト
-        console.log('Fetching game data from API:', resolvedParams.id);
         const response = await fetch(`/api/games/${resolvedParams.id}`);
         if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.details || `Failed to fetch game: ${response.status}`);
+          throw new Error('対局情報の取得に失敗しました');
         }
         const data = await response.json();
-        console.log('Received game data from API:', data);
         setGame(data);
-
-        // スコアデータを取得
-        const scoresResponse = await fetch(`/api/games/${resolvedParams.id}/scores`);
-        if (scoresResponse.ok) {
-          const scoreData = await scoresResponse.json();
-          setScoreData(scoreData);
-          // 最新のスコアから局数を設定
-          const latestScore = scoreData.scores[scoreData.scores.length - 1];
-          setCurrentRound(latestScore ? latestScore.round + 1 : 1);
-        }
       } catch (error) {
         console.error('Error fetching game:', error);
-        setError(error instanceof Error ? error.message : 'ゲーム情報の取得に失敗しました');
+        setError(error instanceof Error ? error.message : '対局情報の取得に失敗しました');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchGame();
-  }, [resolvedParams.id, resolvedSearchParams]);
+    if (resolvedParams.id) {
+      fetchGame();
+    }
+  }, [resolvedParams.id]);
 
   const handleScoreChange = useCallback((scores: Record<string, number>) => {
     if (!game) return;
@@ -198,7 +168,7 @@ export default function ScorePage({ params, searchParams }: PageProps) {
     }
   };
 
-  const handleSaveHistory = async (status: 'draft' | 'completed') => {
+  const handleSaveAndReturn = async () => {
     if (!game) return;
 
     try {
@@ -208,19 +178,42 @@ export default function ScorePage({ params, searchParams }: PageProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: 'draft' }),
       });
 
       if (!response.ok) {
         throw new Error('対局履歴の保存に失敗しました');
       }
 
-      if (status === 'completed') {
-        // 対局終了の場合はダッシュボードに戻る
-        router.push('/dashboard');
-      } else {
-        alert('対局履歴を一時保存しました');
+      // 保存成功後、ダッシュボードに遷移
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error saving game history:', error);
+      alert('対局履歴の保存に失敗しました');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCompleteGame = async () => {
+    if (!game) return;
+
+    try {
+      setIsSaving(true);
+      const response = await fetch(`/api/games/${game.id}/history`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('対局履歴の保存に失敗しました');
       }
+
+      // 対局終了の場合はダッシュボードに戻る
+      router.push('/dashboard');
     } catch (error) {
       console.error('Error saving game history:', error);
       alert('対局履歴の保存に失敗しました');
@@ -286,9 +279,20 @@ export default function ScorePage({ params, searchParams }: PageProps) {
           >
             設定
           </button>
-          <Link href={`/games/${game.id}`} className="btn btn-outline-secondary">
-            戻る
-          </Link>
+          <button
+            className="btn btn-outline-secondary"
+            onClick={handleSaveAndReturn}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                保存中...
+              </>
+            ) : (
+              '戻る'
+            )}
+          </button>
         </div>
       </div>
 
@@ -329,7 +333,7 @@ export default function ScorePage({ params, searchParams }: PageProps) {
       <div className="mt-4 d-flex justify-content-end gap-2">
         <button
           className="btn btn-outline-primary"
-          onClick={() => handleSaveHistory('draft')}
+          onClick={handleSaveAndReturn}
           disabled={isSaving}
         >
           {isSaving ? (
@@ -343,7 +347,7 @@ export default function ScorePage({ params, searchParams }: PageProps) {
         </button>
         <button
           className="btn btn-primary"
-          onClick={() => handleSaveHistory('completed')}
+          onClick={handleCompleteGame}
           disabled={isSaving}
         >
           {isSaving ? (
@@ -402,9 +406,18 @@ export default function ScorePage({ params, searchParams }: PageProps) {
                   <div className="row">
                     <div className="col-6">
                       <p>チップ機能: {game.settings?.chipEnabled ? '有効' : '無効'}</p>
+                      {game.settings?.chipEnabled && (
+                        <p className="text-muted small">チップの点数: {game.settings?.chipPoints?.toLocaleString() ?? 0}点</p>
+                      )}
                     </div>
                     <div className="col-6">
                       <p>焼き鳥機能: {game.settings?.yakitoriEnabled ? '有効' : '無効'}</p>
+                      {game.settings?.yakitoriEnabled && (
+                        <>
+                          <p className="text-muted small">焼き鳥の点数: {game.settings?.yakitori?.toLocaleString() ?? 0}点</p>
+                          <p className="text-muted small">支払い方法: {game.settings?.yakitoriMode === 'distribution' ? '分配モード' : '総取りモード'}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

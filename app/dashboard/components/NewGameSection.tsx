@@ -1,8 +1,36 @@
 import { useState } from 'react';
-import GameSetupModal from '../../components/GameSetupModal';
+import GameStartModal from '../../components/game/GameStartModal';
+import { useRouter } from 'next/navigation';
+import { Player, GameSettings } from '../../components/game/types';
 
 export default function NewGameSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
+
+  const handleGameStart = async (players: Player[], settings: GameSettings) => {
+    try {
+      const response = await fetch('/api/games', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          players,
+          settings,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('対局の作成に失敗しました');
+      }
+
+      const data = await response.json();
+      router.push(`/games/${data.id}/score`);
+    } catch (error) {
+      console.error('対局作成エラー:', error);
+      alert('対局の作成に失敗しました。もう一度お試しください。');
+    }
+  };
 
   return (
     <div className="card mb-4">
@@ -19,9 +47,10 @@ export default function NewGameSection() {
         </button>
       </div>
 
-      <GameSetupModal
+      <GameStartModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onStart={handleGameStart}
       />
     </div>
   );

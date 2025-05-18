@@ -7,15 +7,12 @@ interface Player {
   id?: string;
   name: string;
   email?: string;
+  position: string;
+  isCurrentUser: boolean;
 }
 
 interface GameRequest {
-  players: {
-    east: Player;
-    south: Player;
-    west: Player;
-    north: Player;
-  };
+  players: Player[];
   settings: {
     initialPoints: number;
     returnPoints: number;
@@ -27,6 +24,7 @@ interface GameRequest {
     chipEnabled: boolean;
     yakitoriPoints: number;
     yakitoriEnabled: boolean;
+    yakitoriMode: string;
   };
 }
 
@@ -36,129 +34,103 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
-      console.error('認証エラー: セッションが見つかりません');
-      return new NextResponse('認証が必要です。ログインしてください。', { status: 401 });
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
-    const { players, settings } = await request.json() as GameRequest;
+    const body = await request.json();
+    const { players, settings } = body;
 
-    // プレイヤー情報のバリデーション
-    const playerEntries = Object.entries(players);
-    const playerNames = new Set<string>();
-    const playerEmails = new Set<string>();
+    // プレイヤー情報の検証
+    if (!Array.isArray(players) || players.length !== 4) {
+      return new Response(JSON.stringify({ error: 'プレイヤーは4人必要です' }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    // プレイヤーの位置情報の検証
+    const positions = ['east', 'south', 'west', 'north'];
+    const hasAllPositions = positions.every(pos => 
+      players.some(p => p.position === pos)
+    );
+
+    if (!hasAllPositions) {
+      return new Response(JSON.stringify({ error: '各プレイヤーの位置が正しく設定されていません' }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    // プレイヤー情報の重複チェック
     const playerIds = new Set<string>();
+    const playerEmails = new Set<string>();
+    const playerNames = new Set<string>();
 
-    for (const [position, player] of playerEntries) {
-      // 名前の必須チェック
-      if (!player.name) {
-        return NextResponse.json(
-          { error: `${position}のプレイヤー名を入力してください` },
-          { status: 400 }
-        );
+    for (const player of players) {
+      if (player.userId && playerIds.has(player.userId)) {
+        return NextResponse.json({ error: '同じユーザーIDのプレイヤーが存在します' }, { status: 400 });
+      }
+      if (player.email && playerEmails.has(player.email)) {
+        return NextResponse.json({ error: '同じメールアドレスのプレイヤーが存在します' }, { status: 400 });
+      }
+      if (player.name && playerNames.has(player.name)) {
+        return NextResponse.json({ error: '同じ名前のプレイヤーが存在します' }, { status: 400 });
       }
 
-      // 名前の長さチェック
-      if (player.name.length < 1 || player.name.length > 20) {
-        return NextResponse.json(
-          { error: `${position}のプレイヤー名は1文字以上20文字以下で入力してください` },
-          { status: 400 }
-        );
-      }
-
-      // 名前の重複チェック
-      if (playerNames.has(player.name)) {
-        return NextResponse.json(
-          { error: `同じ名前のプレイヤーが存在します: ${player.name}` },
-          { status: 400 }
-        );
-      }
-      playerNames.add(player.name);
-
-      // メールアドレスのバリデーション（存在する場合）
-      if (player.email) {
-        if (!EMAIL_REGEX.test(player.email)) {
-          return NextResponse.json(
-            { error: `${position}のメールアドレスの形式が正しくありません` },
-            { status: 400 }
-          );
-        }
-
-        if (playerEmails.has(player.email)) {
-          return NextResponse.json(
-            { error: `同じメールアドレスのプレイヤーが存在します: ${player.email}` },
-            { status: 400 }
-          );
-        }
-        playerEmails.add(player.email);
-      }
-
-      // ユーザーIDの重複チェック（存在する場合）
-      if (player.id) {
-        if (playerIds.has(player.id)) {
-          return NextResponse.json(
-            { error: `同じユーザーIDのプレイヤーが存在します` },
-            { status: 400 }
-          );
-        }
-        playerIds.add(player.id);
-      }
+      if (player.userId) playerIds.add(player.userId);
+      if (player.email) playerEmails.add(player.email);
+      if (player.name) playerNames.add(player.name);
     }
 
-    // 対局データを作成
+    // ゲームの作成
     const game = await prisma.game.create({
       data: {
         initialPoints: settings.initialPoints,
         returnPoints: settings.returnPoints,
+        chipPoints: settings.chipPoints,
+        yakitoriPoints: settings.yakitoriPoints,
         uma1: settings.uma1,
         uma2: settings.uma2,
         uma3: settings.uma3,
         uma4: settings.uma4,
-        chipPoints: settings.chipPoints,
         chipEnabled: settings.chipEnabled,
-        yakitoriPoints: settings.yakitoriPoints,
         yakitoriEnabled: settings.yakitoriEnabled,
         players: {
-          create: [
-            {
-              name: players.east.name,
-              position: 'east',
-              userId: players.east.id || null,
-            },
-            {
-              name: players.south.name,
-              position: 'south',
-              userId: players.south.id || null,
-            },
-            {
-              name: players.west.name,
-              position: 'west',
-              userId: players.west.id || null,
-            },
-            {
-              name: players.north.name,
-              position: 'north',
-              userId: players.north.id || null,
-            },
-          ],
-        },
+          create: players.map(player => ({
+            position: player.position,
+            name: player.name,
+            userId: player.userId,
+            isCurrentUser: player.isCurrentUser
+          }))
+        }
       },
       include: {
         players: {
           include: {
-            user: true,
-          },
-        },
-      },
+            user: true
+          }
+        }
+      }
     });
 
-    return NextResponse.json(game);
+    return new Response(JSON.stringify(game), {
+      status: 201,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
   } catch (error) {
     console.error('Error creating game:', error);
-    return NextResponse.json(
-      { error: '対局の作成に失敗しました' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: '対局の作成に失敗しました' }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
   }
 } 
