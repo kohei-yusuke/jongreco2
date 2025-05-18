@@ -72,11 +72,11 @@ export async function GET(
     // プレイヤー情報を整形
     const formattedPlayers = game.players.map(player => ({
       id: player.id,
-      name: player.user?.name || 'Unknown',
+      name: player.name,
       position: player.position,
-      user: {
-        name: player.user?.name || 'Unknown',
-      },
+      user: player.user ? {
+        name: player.user.name,
+      } : null,
     }));
 
     // ゲーム設定を整形

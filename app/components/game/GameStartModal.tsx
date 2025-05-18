@@ -127,18 +127,6 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
   };
 
   const handlePlayerChange = (index: number, field: keyof Player, value: string) => {
-    // ユーザーIDまたはメールアドレスの重複チェック
-    if (field === 'userId' || field === 'email') {
-      const isDuplicate = players.some((player, i) => 
-        i !== index && player[field] === value
-      );
-
-      if (isDuplicate) {
-        alert(`この${field === 'userId' ? 'ユーザーID' : 'メールアドレス'}は既に使用されています。`);
-        return;
-      }
-    }
-
     setPlayers(prevPlayers => {
       const newPlayers = [...prevPlayers];
       newPlayers[index] = {
@@ -150,16 +138,6 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
   };
 
   const handleFriendSelect = (index: number, friend: Friend) => {
-    // 既に選択されているユーザーIDをチェック
-    const isDuplicate = players.some((player, i) => 
-      i !== index && player.userId === friend.friend.id
-    );
-
-    if (isDuplicate) {
-      alert('このユーザーは既に選択されています。別のユーザーを選択してください。');
-      return;
-    }
-
     setPlayers(prevPlayers => {
       const newPlayers = [...prevPlayers];
       newPlayers[index] = {
@@ -188,31 +166,6 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // プレイヤー名の重複チェック
-    const playerNames = players.map(player => player.name.trim());
-    const uniqueNames = new Set(playerNames);
-    if (uniqueNames.size !== playerNames.length) {
-      alert('同じ名前のプレイヤーが存在します。別の名前を入力してください。');
-      return;
-    }
-
-    // ユーザーIDの重複チェック
-    const playerIds = players.map(player => player.userId).filter(id => id);
-    const uniqueIds = new Set(playerIds);
-    if (uniqueIds.size !== playerIds.length) {
-      alert('同じユーザーが複数回登録されています。別のユーザーを選択してください。');
-      return;
-    }
-
-    // メールアドレスの重複チェック
-    const playerEmails = players.map(player => player.email).filter(email => email);
-    const uniqueEmails = new Set(playerEmails);
-    if (uniqueEmails.size !== playerEmails.length) {
-      alert('同じメールアドレスが複数回登録されています。別のメールアドレスを入力してください。');
-      return;
-    }
-
     const validPlayers = players.map(player => ({
       name: player.name || '',
       userId: player.userId,

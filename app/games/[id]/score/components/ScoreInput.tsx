@@ -47,6 +47,11 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
 
+  // デバッグ用：プレイヤー情報の確認
+  useEffect(() => {
+    console.log('Players:', players);
+  }, [players]);
+
   // 最新の局数を取得
   useEffect(() => {
     const fetchLatestRound = async () => {
@@ -238,7 +243,7 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
                 <th>項目</th>
                 {players.map(player => (
                   <th key={player.id}>
-                    {player.user?.name || player.name}
+                    {player.name}
                     <br />
                     <small className="text-muted">
                       {player.position === 'east' && '東家'}
