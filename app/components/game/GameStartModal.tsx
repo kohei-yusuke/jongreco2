@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Modal from 'react-bootstrap/Modal';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
+import Alert from 'react-bootstrap/Alert';
 import { useSession } from 'next-auth/react';
 import { Player, PlayerType, Position, Friend, GameStartModalProps } from './types';
 
@@ -13,6 +14,63 @@ const POSITION_LABELS: Record<Position, string> = {
 };
 
 const POSITION_ORDER: Position[] = ['east', 'south', 'west', 'north'];
+
+// バリデーション用の正規表現
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+// バリデーション関数
+const validatePlayer = (player: Player, allPlayers: Player[]): string[] => {
+  const errors: string[] = [];
+
+  // 入力値がない場合はバリデーションをスキップ
+  if (!player.name && !player.userId && !player.email) {
+    return errors;
+  }
+
+  // 名前のバリデーション
+  if (!player.name) {
+    errors.push('プレイヤー名を入力してください');
+  } else if (player.name.length < 1 || player.name.length > 20) {
+    errors.push('プレイヤー名は1文字以上20文字以下で入力してください');
+  }
+
+  // 名前の重複チェック（登録済みユーザーは除外）
+  const duplicateName = allPlayers.filter(p => 
+    p.name === player.name && 
+    (!p.userId || p.userId !== player.userId)
+  ).length > 1;
+  if (duplicateName) {
+    errors.push('同じ名前のプレイヤーが存在します');
+  }
+
+  // メールアドレスのバリデーション
+  if (player.email) {
+    if (!EMAIL_REGEX.test(player.email)) {
+      errors.push('メールアドレスの形式が正しくありません');
+    }
+    // メールアドレスの重複チェック（登録済みユーザーは除外）
+    const duplicateEmail = allPlayers.filter(p => 
+      p.email === player.email && 
+      (!p.userId || p.userId !== player.userId)
+    ).length > 1;
+    if (duplicateEmail) {
+      errors.push('同じメールアドレスのプレイヤーが存在します');
+    }
+  }
+
+  // ユーザーIDの重複チェック
+  if (player.userId) {
+    const duplicateUserId = allPlayers.filter(p => 
+      p.userId === player.userId && 
+      p.id !== player.id
+    ).length > 0;
+    if (duplicateUserId) {
+      errors.push('同じユーザーIDのプレイヤーが存在します');
+    }
+  }
+
+  return errors;
+};
 
 function PositionSwapButton({ 
   onClick, 
@@ -62,6 +120,7 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
   const [players, setPlayers] = useState<Player[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (isOpen && session?.user) {
@@ -135,6 +194,78 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
       };
       return newPlayers;
     });
+
+    // メールアドレスが入力された場合、ユーザー検索を実行
+    if (field === 'email' && value) {
+      searchUserByEmail(value, index);
+    }
+  };
+
+  const handlePlayerBlur = (index: number) => {
+    const player = players[index];
+    
+    // 入力値がない場合はエラーをクリア
+    if (!player.name && !player.userId && !player.email) {
+      setErrors(prev => ({
+        ...prev,
+        [player.id]: []
+      }));
+      return;
+    }
+
+    // バリデーション実行
+    const playerErrors = validatePlayer(player, players);
+    setErrors(prev => ({
+      ...prev,
+      [player.id]: playerErrors
+    }));
+  };
+
+  const searchUserByEmail = async (email: string, index: number) => {
+    try {
+      const response = await fetch(`/api/users/search?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+
+      if (response.ok && data.user) {
+        // ユーザーが見つかった場合、プレイヤー情報を更新
+        setPlayers(prevPlayers => {
+          const newPlayers = [...prevPlayers];
+          newPlayers[index] = {
+            ...newPlayers[index],
+            name: data.user.name || '名無し',
+            userId: data.user.id,
+            email: data.user.email
+          };
+          return newPlayers;
+        });
+
+        // 更新後のプレイヤー情報でバリデーションを再実行
+        const updatedPlayers = [...players];
+        updatedPlayers[index] = {
+          ...updatedPlayers[index],
+          name: data.user.name || '名無し',
+          userId: data.user.id,
+          email: data.user.email
+        };
+        const playerErrors = validatePlayer(updatedPlayers[index], updatedPlayers);
+        setErrors(prev => ({
+          ...prev,
+          [updatedPlayers[index].id]: playerErrors
+        }));
+      } else {
+        // ユーザーが見つからなかった場合、エラーを設定
+        setErrors(prev => ({
+          ...prev,
+          [players[index].id]: ['ユーザーが見つかりません']
+        }));
+      }
+    } catch (error) {
+      console.error('ユーザー検索エラー:', error);
+      setErrors(prev => ({
+        ...prev,
+        [players[index].id]: ['ユーザー検索に失敗しました']
+      }));
+    }
   };
 
   const handleFriendSelect = (index: number, friend: Friend) => {
@@ -148,6 +279,9 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
       };
       return newPlayers;
     });
+
+    // フレンド選択後もバリデーションを実行
+    handlePlayerBlur(index);
   };
 
   const swapPositions = (index1: number, index2: number) => {
@@ -166,6 +300,24 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 全プレイヤーのバリデーション
+    const allErrors: Record<string, string[]> = {};
+    let hasErrors = false;
+
+    players.forEach(player => {
+      const playerErrors = validatePlayer(player, players);
+      if (playerErrors.length > 0) {
+        allErrors[player.id] = playerErrors;
+        hasErrors = true;
+      }
+    });
+
+    if (hasErrors) {
+      setErrors(allErrors);
+      return;
+    }
+
     const validPlayers = players.map(player => ({
       name: player.name || '',
       userId: player.userId,
@@ -211,7 +363,9 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
                             const friend = friends.find(f => f.friend.id === e.target.value);
                             if (friend) handleFriendSelect(index, friend);
                           }}
+                          onBlur={() => handlePlayerBlur(index)}
                           disabled={player.isCurrentUser}
+                          isInvalid={!!errors[player.id]?.length}
                         >
                           <option value="">フレンドを選択</option>
                           {friends.map((friend) => (
@@ -228,7 +382,9 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
                           placeholder="ユーザーID"
                           value={player.userId || ''}
                           onChange={(e) => handlePlayerChange(index, 'userId', e.target.value)}
+                          onBlur={() => handlePlayerBlur(index)}
                           disabled={player.isCurrentUser}
+                          isInvalid={!!errors[player.id]?.length}
                         />
                       )}
 
@@ -238,7 +394,9 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
                           placeholder="メールアドレス"
                           value={player.email || ''}
                           onChange={(e) => handlePlayerChange(index, 'email', e.target.value)}
+                          onBlur={() => handlePlayerBlur(index)}
                           disabled={player.isCurrentUser}
+                          isInvalid={!!errors[player.id]?.length}
                         />
                       )}
 
@@ -248,9 +406,18 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
                           placeholder="プレイヤー名"
                           value={player.name}
                           onChange={(e) => handlePlayerChange(index, 'name', e.target.value)}
-                          required
+                          onBlur={() => handlePlayerBlur(index)}
                           disabled={player.isCurrentUser}
+                          isInvalid={!!errors[player.id]?.length}
                         />
+                      )}
+
+                      {errors[player.id]?.length > 0 && (
+                        <Alert variant="danger" className="mt-2">
+                          {errors[player.id].map((error, i) => (
+                            <div key={i}>{error}</div>
+                          ))}
+                        </Alert>
                       )}
                     </div>
                   </div>
@@ -301,15 +468,12 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
               </div>
             </div>
           </div>
-
-          <div className="mt-3">
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-100"
-              disabled={!players.every(player => player.name)}
-            >
-              対局を開始
+          <div className="mt-3 text-end">
+            <Button variant="secondary" onClick={onClose} className="me-2">
+              キャンセル
+            </Button>
+            <Button variant="primary" type="submit" disabled={loading}>
+              {loading ? '開始中...' : '対局を開始'}
             </Button>
           </div>
         </Form>
