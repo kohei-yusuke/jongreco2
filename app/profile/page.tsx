@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { format, isValid } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import FriendSearchModal from '@/app/components/FriendSearchModal';
+import QRCodeModal from '@/app/components/QRCodeModal';
+import QRScanner from '@/app/components/QRScanner';
 
 export default function ProfilePage() {
   const { data: session, status, update } = useSession();
@@ -22,6 +24,8 @@ export default function ProfilePage() {
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const [iconError, setIconError] = useState<string | null>(null);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -184,6 +188,27 @@ export default function ProfilePage() {
       setIconError(error instanceof Error ? error.message : 'アイコンのアップロードに失敗しました');
     } finally {
       setIsUploadingIcon(false);
+    }
+  };
+
+  const handleQRScan = async (userId: string) => {
+    try {
+      const response = await fetch('/api/friends/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ toId: userId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'フレンドリクエストの送信に失敗しました');
+      }
+
+      alert('フレンドリクエストを送信しました');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'フレンドリクエストの送信に失敗しました');
     }
   };
 
@@ -420,12 +445,26 @@ export default function ProfilePage() {
               <div className="mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h3 className="h5 mb-0">フレンド</h3>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => setShowFriendSearch(true)}
-                  >
-                    フレンドを追加
-                  </button>
+                  <div className="d-flex gap-2">
+                    <button
+                      className="btn btn-outline-primary"
+                      onClick={() => setShowQRCode(true)}
+                    >
+                      QRコードを表示
+                    </button>
+                    <button
+                      className="btn btn-outline-primary"
+                      onClick={() => setShowQRScanner(true)}
+                    >
+                      QRコードをスキャン
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setShowFriendSearch(true)}
+                    >
+                      フレンドを追加
+                    </button>
+                  </div>
                 </div>
                 <FriendSection session={session} />
               </div>
@@ -437,6 +476,15 @@ export default function ProfilePage() {
       <FriendSearchModal
         isOpen={showFriendSearch}
         onClose={() => setShowFriendSearch(false)}
+      />
+      <QRCodeModal
+        isOpen={showQRCode}
+        onClose={() => setShowQRCode(false)}
+      />
+      <QRScanner
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={handleQRScan}
       />
     </div>
   );
