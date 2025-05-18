@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 interface Player {
   id?: string;
   name: string;
+  email?: string;
 }
 
 interface GameRequest {
@@ -29,6 +30,9 @@ interface GameRequest {
   };
 }
 
+// メールアドレスのバリデーション用正規表現
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -42,12 +46,63 @@ export async function POST(request: Request) {
 
     // プレイヤー情報のバリデーション
     const playerEntries = Object.entries(players);
+    const playerNames = new Set<string>();
+    const playerEmails = new Set<string>();
+    const playerIds = new Set<string>();
+
     for (const [position, player] of playerEntries) {
+      // 名前の必須チェック
       if (!player.name) {
         return NextResponse.json(
           { error: `${position}のプレイヤー名を入力してください` },
           { status: 400 }
         );
+      }
+
+      // 名前の長さチェック
+      if (player.name.length < 1 || player.name.length > 20) {
+        return NextResponse.json(
+          { error: `${position}のプレイヤー名は1文字以上20文字以下で入力してください` },
+          { status: 400 }
+        );
+      }
+
+      // 名前の重複チェック
+      if (playerNames.has(player.name)) {
+        return NextResponse.json(
+          { error: `同じ名前のプレイヤーが存在します: ${player.name}` },
+          { status: 400 }
+        );
+      }
+      playerNames.add(player.name);
+
+      // メールアドレスのバリデーション（存在する場合）
+      if (player.email) {
+        if (!EMAIL_REGEX.test(player.email)) {
+          return NextResponse.json(
+            { error: `${position}のメールアドレスの形式が正しくありません` },
+            { status: 400 }
+          );
+        }
+
+        if (playerEmails.has(player.email)) {
+          return NextResponse.json(
+            { error: `同じメールアドレスのプレイヤーが存在します: ${player.email}` },
+            { status: 400 }
+          );
+        }
+        playerEmails.add(player.email);
+      }
+
+      // ユーザーIDの重複チェック（存在する場合）
+      if (player.id) {
+        if (playerIds.has(player.id)) {
+          return NextResponse.json(
+            { error: `同じユーザーIDのプレイヤーが存在します` },
+            { status: 400 }
+          );
+        }
+        playerIds.add(player.id);
       }
     }
 
