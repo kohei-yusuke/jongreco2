@@ -13,9 +13,11 @@ export async function DELETE(
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
     const friendId = params.id;
-    // 双方向のFriendレコードを削除
+
+    // トランザクションでフレンド関係とフレンドリクエストの履歴を削除
     await prisma.$transaction([
-      prisma.Friend.deleteMany({
+      // 双方向のFriendレコードを削除
+      prisma.friend.deleteMany({
         where: {
           OR: [
             { userId: session.user.id, friendId },
@@ -23,7 +25,17 @@ export async function DELETE(
           ],
         },
       }),
+      // フレンドリクエストの履歴を削除
+      prisma.friendRequest.deleteMany({
+        where: {
+          OR: [
+            { fromId: session.user.id, toId: friendId },
+            { fromId: friendId, toId: session.user.id },
+          ],
+        },
+      }),
     ]);
+
     return NextResponse.json({ message: 'フレンドを削除しました' });
   } catch (error) {
     console.error('フレンド削除エラー:', error);

@@ -14,7 +14,7 @@ export async function POST(
     }
     const requestId = params.id;
     // リクエスト取得
-    const friendRequest = await prisma.FriendRequest.findUnique({
+    const friendRequest = await prisma.friendRequest.findUnique({
       where: { id: requestId },
     });
     if (!friendRequest) {
@@ -28,23 +28,22 @@ export async function POST(
     if (friendRequest.status === 'accepted') {
       return NextResponse.json({ message: '既に承認済みです' });
     }
-    // トランザクションでフレンド登録＋リクエスト更新
+    // トランザクションでフレンド登録＋リクエスト削除
     await prisma.$transaction([
-      prisma.Friend.create({
+      prisma.friend.create({
         data: {
           userId: friendRequest.fromId,
           friendId: friendRequest.toId,
         },
       }),
-      prisma.Friend.create({
+      prisma.friend.create({
         data: {
           userId: friendRequest.toId,
           friendId: friendRequest.fromId,
         },
       }),
-      prisma.FriendRequest.update({
+      prisma.friendRequest.delete({
         where: { id: requestId },
-        data: { status: 'accepted' },
       }),
     ]);
     return NextResponse.json({ message: 'フレンドリクエストを承認しました' });

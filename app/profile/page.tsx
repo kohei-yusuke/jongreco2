@@ -15,6 +15,13 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showFriendSearch, setShowFriendSearch] = useState(false);
+  const [newNickname, setNewNickname] = useState('');
+  const [isChangingNickname, setIsChangingNickname] = useState(false);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [showNicknameForm, setShowNicknameForm] = useState(false);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [iconError, setIconError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -100,6 +107,86 @@ export default function ProfilePage() {
     }
   };
 
+  const handleNicknameChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsChangingNickname(true);
+    setNicknameError(null);
+
+    try {
+      const response = await fetch('/api/users/nickname', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nickname: newNickname }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'ニックネームの更新に失敗しました');
+      }
+
+      // セッションを更新
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          name: newNickname,
+        },
+      });
+
+      setShowNicknameForm(false);
+      setNewNickname('');
+      
+      // ページをリロードして確実にセッションを更新
+      router.refresh();
+    } catch (error) {
+      setNicknameError(error instanceof Error ? error.message : 'ニックネームの更新に失敗しました');
+    } finally {
+      setIsChangingNickname(false);
+    }
+  };
+
+  const handleIconUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!iconFile) return;
+
+    setIsUploadingIcon(true);
+    setIconError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('icon', iconFile);
+
+      const response = await fetch('/api/users/icon', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'アイコンのアップロードに失敗しました');
+      }
+
+      // セッションを更新
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          iconPath: data.iconPath,
+        },
+      });
+
+      setIconFile(null);
+      router.refresh();
+    } catch (error) {
+      setIconError(error instanceof Error ? error.message : 'アイコンのアップロードに失敗しました');
+    } finally {
+      setIsUploadingIcon(false);
+    }
+  };
+
   if (status === 'loading') {
     return (
       <div className="container py-5">
@@ -140,6 +227,113 @@ export default function ProfilePage() {
               
               <div className="mb-4">
                 <h3 className="h5 mb-3">基本情報</h3>
+                <div className="row mb-4">
+                  <div className="col-md-4 fw-bold">アイコン</div>
+                  <div className="col-md-8">
+                    <div className="d-flex align-items-center">
+                      <div className="me-3">
+                        <img
+                          src={session.user.iconPath || '/icons/default-icon.png'}
+                          alt="プロフィールアイコン"
+                          className="rounded-circle"
+                          style={{ width: '64px', height: '64px', objectFit: 'cover' }}
+                        />
+                      </div>
+                      <div>
+                        <form onSubmit={handleIconUpload} className="d-flex align-items-center">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setIconFile(e.target.files?.[0] || null)}
+                            className="form-control form-control-sm me-2"
+                            style={{ maxWidth: '200px' }}
+                          />
+                          <button
+                            type="submit"
+                            className="btn btn-primary btn-sm"
+                            disabled={!iconFile || isUploadingIcon}
+                          >
+                            {isUploadingIcon ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                アップロード中...
+                              </>
+                            ) : (
+                              'アップロード'
+                            )}
+                          </button>
+                        </form>
+                        {iconError && (
+                          <div className="text-danger mt-2">{iconError}</div>
+                        )}
+                        <div className="form-text mt-1">
+                          2MB以下の画像ファイル（JPG、PNG、GIF）をアップロードできます
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="row mb-2">
+                  <div className="col-md-4 fw-bold">ニックネーム</div>
+                  <div className="col-md-8">
+                    <div className="d-flex align-items-center">
+                      <span className="me-2">{session.user.name || '未設定'}</span>
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => setShowNicknameForm(!showNicknameForm)}
+                      >
+                        {showNicknameForm ? 'キャンセル' : '変更'}
+                      </button>
+                    </div>
+                    {showNicknameForm && (
+                      <div className="mt-2">
+                        <form onSubmit={handleNicknameChange}>
+                          <div className="mb-2">
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={newNickname}
+                              onChange={(e) => setNewNickname(e.target.value)}
+                              placeholder="新しいニックネーム"
+                              maxLength={20}
+                            />
+                          </div>
+                          {nicknameError && (
+                            <div className="text-danger mb-2">{nicknameError}</div>
+                          )}
+                          <div className="d-flex gap-2">
+                            <button
+                              type="submit"
+                              className="btn btn-primary"
+                              disabled={isChangingNickname}
+                            >
+                              {isChangingNickname ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  変更中...
+                                </>
+                              ) : (
+                                'ニックネームを変更'
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary"
+                              onClick={() => {
+                                setShowNicknameForm(false);
+                                setNewNickname('');
+                                setNicknameError(null);
+                              }}
+                              disabled={isChangingNickname}
+                            >
+                              キャンセル
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="row mb-2">
                   <div className="col-md-4 fw-bold">ユーザーID</div>
                   <div className="col-md-8">
@@ -233,7 +427,7 @@ export default function ProfilePage() {
                     フレンドを追加
                   </button>
                 </div>
-                <FriendSection />
+                <FriendSection session={session} />
               </div>
             </div>
           </div>
@@ -248,7 +442,7 @@ export default function ProfilePage() {
   );
 }
 
-function FriendSection() {
+function FriendSection({ session }: { session: any }) {
   const [requests, setRequests] = useState<any[]>([]);
   const [friends, setFriends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,51 +493,79 @@ function FriendSection() {
     fetchRequests();
     fetchFriends();
   };
+
   const handleReject = async (id: string) => {
     await fetch(`/api/friends/requests/${id}/reject`, { method: 'POST' });
     fetchRequests();
   };
+
   const handleDelete = async (id: string) => {
     await fetch(`/api/friends/${id}`, { method: 'DELETE' });
     fetchFriends();
   };
 
+  const handleCancelRequest = async (id: string) => {
+    await fetch(`/api/friends/requests/${id}`, { method: 'DELETE' });
+    fetchRequests();
+  };
+
+  // 受信リクエストと送信済みリクエストを分離
+  const receivedRequests = requests.filter(req => req.toId === session?.user?.id);
+  const sentRequests = requests.filter(req => req.fromId === session?.user?.id);
+
   return (
     <div className="mt-4">
-      <h4>フレンドリクエスト</h4>
+      <h4>受信したフレンドリクエスト</h4>
       {loading ? (
         <div>読み込み中...</div>
       ) : error ? (
         <div className="text-danger">{error}</div>
       ) : (
         <ul className="list-group mb-4">
-          {requests.length === 0 && <li className="list-group-item">リクエストはありません</li>}
-          {requests.map((req) => (
+          {receivedRequests.length === 0 && <li className="list-group-item">受信したリクエストはありません</li>}
+          {receivedRequests.map((req) => (
             <li key={req.id} className="list-group-item d-flex justify-content-between align-items-center">
               <span>
-                {req.fromId === req.toId ? null : (
-                  req.toId === req.from.id ? (
-                    <>
-                      <b>{req.from.name || req.from.email}</b> からのリクエスト
-                    </>
-                  ) : (
-                    <>
-                      <b>{req.to.name || req.to.email}</b> へ申請中
-                    </>
-                  )
-                )}
+                <b>{req.from.name || '名無し'}</b>
+                <span className="text-muted ms-1">@{req.from.id}</span> からのリクエスト
                 <span className="badge bg-secondary ms-2">{req.status}</span>
               </span>
-              {req.toId === req.to.id && req.status === 'pending' ? (
+              {req.status === 'pending' && (
                 <span>
                   <button className="btn btn-success btn-sm me-2" onClick={() => handleAccept(req.id)}>承認</button>
                   <button className="btn btn-outline-danger btn-sm" onClick={() => handleReject(req.id)}>拒否</button>
                 </span>
-              ) : null}
+              )}
             </li>
           ))}
         </ul>
       )}
+
+      <h4>送信済みフレンドリクエスト</h4>
+      {loading ? (
+        <div>読み込み中...</div>
+      ) : error ? (
+        <div className="text-danger">{error}</div>
+      ) : (
+        <ul className="list-group mb-4">
+          {sentRequests.length === 0 && <li className="list-group-item">送信済みのリクエストはありません</li>}
+          {sentRequests.map((req) => (
+            <li key={req.id} className="list-group-item d-flex justify-content-between align-items-center">
+              <span>
+                <b>{req.to.name || '名無し'}</b>
+                <span className="text-muted ms-1">@{req.to.id}</span> へ申請中
+                <span className="badge bg-secondary ms-2">{req.status}</span>
+              </span>
+              {req.status === 'pending' && (
+                <button className="btn btn-outline-danger btn-sm" onClick={() => handleCancelRequest(req.id)}>
+                  取下
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <h4>フレンド一覧</h4>
       {loading ? (
         <div>読み込み中...</div>
@@ -352,10 +574,15 @@ function FriendSection() {
       ) : (
         <ul className="list-group">
           {friends.length === 0 && <li className="list-group-item">フレンドはいません</li>}
-          {friends.map((f) => (
-            <li key={f.friend.id} className="list-group-item d-flex justify-content-between align-items-center">
-              <span>{f.friend.name || f.friend.email}</span>
-              <button className="btn btn-outline-danger btn-sm" onClick={() => handleDelete(f.friend.id)}>削除</button>
+          {friends.map((friend) => (
+            <li key={friend.id} className="list-group-item d-flex justify-content-between align-items-center">
+              <span>
+                <b>{friend.friend.name || '名無し'}</b>
+                <span className="text-muted ms-1">@{friend.friend.id}</span>
+              </span>
+              <button className="btn btn-outline-danger btn-sm" onClick={() => handleDelete(friend.friend.id)}>
+                削除
+              </button>
             </li>
           ))}
         </ul>

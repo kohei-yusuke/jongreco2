@@ -9,8 +9,8 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
-        email: { label: 'メールアドレス', type: 'email' },
-        password: { label: 'パスワード', type: 'password' },
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -35,6 +35,7 @@ export const authOptions: AuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          iconPath: user.iconPath || null,
           createdAt: user.createdAt.toISOString(),
         };
       },
@@ -53,11 +54,15 @@ export const authOptions: AuthOptions = {
         token.id = session.user.id;
         token.email = session.user.email;
         token.name = session.user.name;
+        token.iconPath = session.user.iconPath;
+        token.createdAt = session.user.createdAt;
       }
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+        token.iconPath = user.iconPath;
+        token.createdAt = user.createdAt;
       }
       return token;
     },
@@ -66,6 +71,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string | null;
+        session.user.iconPath = token.iconPath as string | null;
         session.user.createdAt = token.createdAt as string;
       }
       return session;
