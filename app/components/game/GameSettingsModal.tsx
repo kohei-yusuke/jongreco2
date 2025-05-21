@@ -9,7 +9,7 @@ import { GameSettings } from './types';
 interface GameSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  gameId: string;
+  onStart: (settings: GameSettings) => void;
   initialSettings: GameSettings;
 }
 
@@ -27,28 +27,17 @@ const DEFAULT_SETTINGS: GameSettings = {
   yakitoriMode: 'distribution'
 };
 
-export default function GameSettingsModal({ isOpen, onClose, gameId, initialSettings }: GameSettingsModalProps) {
+export default function GameSettingsModal({ isOpen, onClose, onStart, initialSettings }: GameSettingsModalProps) {
   const [settings, setSettings] = useState<GameSettings>(initialSettings);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/api/games/${gameId}/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
-
-      if (!response.ok) {
-        throw new Error('設定の更新に失敗しました');
-      }
-
+      onStart(settings);
       onClose();
     } catch (error) {
       console.error('Error updating settings:', error);
-      alert('設定の更新に失敗しました');
+      alert(error instanceof Error ? error.message : '設定の更新に失敗しました');
     }
   };
 
@@ -67,7 +56,6 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
       <Modal.Body>
         <Form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <h5>基本設定</h5>
             <Form.Group className="mb-3">
               <Form.Label>
                 配給原点
@@ -102,6 +90,7 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
                 step={1000}
               />
             </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Label>
                 返し点
@@ -109,7 +98,7 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
                   placement="right"
                   overlay={
                     <Tooltip>
-                      対局終了時の基準点です。一般的には30,000点に設定し、差額分がトップ賞となります。例えば、配給原点25,000点、返し点30,000点の場合、トップ賞は20,000点となります。
+                      対局終了時の基準点です。一般的には30,000点に設定し、差額分がトップ賞となります。
                     </Tooltip>
                   }
                 >
@@ -136,156 +125,69 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
                 step={1000}
               />
             </Form.Group>
-          </div>
 
-          <div className="mb-4">
-            <h5>ウマ設定</h5>
-            <div className="row">
-              <div className="col-6">
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    1位
-                    <OverlayTrigger
-                      placement="right"
-                      overlay={
-                        <Tooltip>
-                          1位のプレイヤーが他のプレイヤーから受け取る点数です。一般的には+20点に設定します。例えば、1位が+20点の場合、他のプレイヤーから5点ずつ受け取ります。
-                        </Tooltip>
-                      }
-                    >
-                      <span className="ms-2" style={{ 
-                        cursor: 'help',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        backgroundColor: '#e0e0e0',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>?</span>
-                    </OverlayTrigger>
-                  </Form.Label>
+            <Form.Group className="mb-3">
+              <Form.Label>
+                ウマ
+                <OverlayTrigger
+                  placement="right"
+                  overlay={
+                    <Tooltip>
+                      各順位のウマを設定します。一般的には1位+20、2位+10、3位-10、4位-20に設定します。
+                    </Tooltip>
+                  }
+                >
+                  <span className="ms-2" style={{ 
+                    cursor: 'help',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    backgroundColor: '#e0e0e0',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}>?</span>
+                </OverlayTrigger>
+              </Form.Label>
+              <div className="row g-2">
+                <div className="col">
+                  <Form.Label className="small text-muted">1位</Form.Label>
                   <Form.Control
                     type="number"
                     value={settings.uma1}
                     onChange={(e) => handleChange('uma1', parseInt(e.target.value))}
-                    step={1}
                   />
-                </Form.Group>
-              </div>
-              <div className="col-6">
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    2位
-                    <OverlayTrigger
-                      placement="right"
-                      overlay={
-                        <Tooltip>
-                          2位のプレイヤーが他のプレイヤーから受け取る点数です。一般的には+10点に設定します。例えば、2位が+10点の場合、3位と4位から5点ずつ受け取ります。
-                        </Tooltip>
-                      }
-                    >
-                      <span className="ms-2" style={{ 
-                        cursor: 'help',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        backgroundColor: '#e0e0e0',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>?</span>
-                    </OverlayTrigger>
-                  </Form.Label>
+                </div>
+                <div className="col">
+                  <Form.Label className="small text-muted">2位</Form.Label>
                   <Form.Control
                     type="number"
                     value={settings.uma2}
                     onChange={(e) => handleChange('uma2', parseInt(e.target.value))}
-                    step={1}
                   />
-                </Form.Group>
-              </div>
-              <div className="col-6">
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    3位
-                    <OverlayTrigger
-                      placement="right"
-                      overlay={
-                        <Tooltip>
-                          3位のプレイヤーが他のプレイヤーに支払う点数です。一般的には-10点に設定します。例えば、3位が-10点の場合、1位と2位に5点ずつ支払います。
-                        </Tooltip>
-                      }
-                    >
-                      <span className="ms-2" style={{ 
-                        cursor: 'help',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        backgroundColor: '#e0e0e0',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>?</span>
-                    </OverlayTrigger>
-                  </Form.Label>
+                </div>
+                <div className="col">
+                  <Form.Label className="small text-muted">3位</Form.Label>
                   <Form.Control
                     type="number"
                     value={settings.uma3}
                     onChange={(e) => handleChange('uma3', parseInt(e.target.value))}
-                    step={1}
                   />
-                </Form.Group>
-              </div>
-              <div className="col-6">
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    4位
-                    <OverlayTrigger
-                      placement="right"
-                      overlay={
-                        <Tooltip>
-                          4位のプレイヤーが他のプレイヤーに支払う点数です。一般的には-20点に設定します。例えば、4位が-20点の場合、1位に10点、2位に10点支払います。
-                        </Tooltip>
-                      }
-                    >
-                      <span className="ms-2" style={{ 
-                        cursor: 'help',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        backgroundColor: '#e0e0e0',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>?</span>
-                    </OverlayTrigger>
-                  </Form.Label>
+                </div>
+                <div className="col">
+                  <Form.Label className="small text-muted">4位</Form.Label>
                   <Form.Control
                     type="number"
                     value={settings.uma4}
                     onChange={(e) => handleChange('uma4', parseInt(e.target.value))}
-                    step={1}
                   />
-                </Form.Group>
+                </div>
               </div>
-            </div>
-          </div>
+            </Form.Group>
 
-          <div className="mb-4">
-            <h5>機能設定</h5>
             <Form.Group className="mb-3">
               <Form.Check
                 type="switch"
@@ -297,7 +199,7 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
                       placement="right"
                       overlay={
                         <Tooltip>
-                          チップ機能を有効にすると、各局でチップを設定できます。チップは局の点数に加算され、和了者に支払われます。一般的には100点単位で設定します。
+                          チップ機能を有効にすると、各局でチップを設定できます。チップは局の点数に加算され、和了者に支払われます。
                         </Tooltip>
                       }
                     >
@@ -321,17 +223,21 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
                 onChange={(e) => handleChange('chipEnabled', e.target.checked)}
               />
               {settings.chipEnabled && (
-                <Form.Control
-                  type="number"
-                  value={settings.chipPoints}
-                  onChange={(e) => handleChange('chipPoints', parseInt(e.target.value))}
-                  min={0}
-                  step={100}
-                  className="mt-2"
-                  placeholder="チップの点数を入力"
-                />
+                <>
+                  <Form.Label className="small text-muted">1枚当たりの点数</Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={settings.chipPoints}
+                    onChange={(e) => handleChange('chipPoints', parseInt(e.target.value))}
+                    min={0}
+                    step={100}
+                    className="mt-2"
+                    placeholder="チップの点数を入力"
+                  />
+                </>
               )}
             </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Check
                 type="switch"
@@ -343,7 +249,7 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
                       placement="right"
                       overlay={
                         <Tooltip>
-                          1対局で1回も上がれなかった人に対する罰則です。分配モードの場合、設定した点数を焼き鳥以外の各プレーヤーに支払います。総どりモードの場合、1位にのみ設定した点数が支払われます。
+                          焼き鳥機能を有効にすると、各局で焼き鳥を設定できます。焼き鳥は局の点数に加算され、設定したプレイヤーに支払われます。
                         </Tooltip>
                       }
                     >
@@ -368,6 +274,7 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
               />
               {settings.yakitoriEnabled && (
                 <>
+                  <Form.Label className="small text-muted">焼き鳥の人が支払う点数</Form.Label>
                   <Form.Control
                     type="number"
                     value={settings.yakitoriPoints}
@@ -382,7 +289,7 @@ export default function GameSettingsModal({ isOpen, onClose, gameId, initialSett
                     value={settings.yakitoriMode}
                     onChange={(e) => handleChange('yakitoriMode', e.target.value as 'distribution' | 'winner_takes_all')}
                   >
-                    <option value="distribution">分配モード（焼き鳥以外で分配）</option>
+                    <option value="distribution">分配モード（焼き鳥以外の全員に支払う）</option>
                     <option value="winner_takes_all">総どりモード（1位が総取り）</option>
                   </Form.Select>
                 </>

@@ -143,31 +143,31 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
       const initialPlayers = [
         {
           id: 'player-1',
-          type: 'manual' as PlayerType,
+          type: 'manual' as const,
           name: session.user.name || '自分',
           userId: session.user.id,
-          position: 'east' as Position,
+          position: 'east' as const,
           isCurrentUser: true
         },
         {
           id: 'player-2',
-          type: 'manual' as PlayerType,
+          type: 'manual' as const,
           name: '',
-          position: 'south' as Position,
+          position: 'south' as const,
           isCurrentUser: false
         },
         {
           id: 'player-3',
-          type: 'manual' as PlayerType,
+          type: 'manual' as const,
           name: '',
-          position: 'west' as Position,
+          position: 'west' as const,
           isCurrentUser: false
         },
         {
           id: 'player-4',
-          type: 'manual' as PlayerType,
+          type: 'manual' as const,
           name: '',
-          position: 'north' as Position,
+          position: 'north' as const,
           isCurrentUser: false
         }
       ];
@@ -179,12 +179,14 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
   const fetchFriends = async () => {
     try {
       const response = await fetch('/api/friends');
-      const data = await response.json();
-      if (response.ok) {
-        setFriends(data.friends);
+      if (!response.ok) {
+        throw new Error('フレンドの取得に失敗しました');
       }
+      const data = await response.json();
+      setFriends(data || []); // データがnullの場合は空配列を設定
     } catch (error) {
-      console.error('フレンド取得エラー:', error);
+      console.error('Error fetching friends:', error);
+      setFriends([]); // エラー時も空配列を設定
     }
   };
 
@@ -194,11 +196,18 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
       newPlayers[index] = {
         ...newPlayers[index],
         type,
+        name: '', // 入力値をクリア
         userId: undefined,
         email: undefined
       };
       return newPlayers;
     });
+
+    // 入力値をクリアした後、エラーもクリア
+    setErrors(prev => ({
+      ...prev,
+      [players[index].id]: []
+    }));
   };
 
   const handlePlayerChange = (index: number, field: keyof Player, value: string) => {
@@ -289,7 +298,7 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
       const newPlayers = [...prevPlayers];
       newPlayers[index] = {
         ...newPlayers[index],
-        type: 'friend',
+        type: 'friend' as const,
         name: friend.friend.name || '名無し',
         userId: friend.friend.id
       };
@@ -321,12 +330,31 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
 
     try {
       // プレイヤー情報の検証
-      const validPlayers = players.filter(p => p.name.trim() !== '');
+      const validPlayers = players.filter(p => {
+        // 手動入力の場合
+        if (p.type === 'manual') {
+          return p.name.trim() !== '';
+        }
+        // フレンド選択の場合
+        if (p.type === 'friend') {
+          return p.userId !== undefined;
+        }
+        // ユーザーIDの場合
+        if (p.type === 'id') {
+          return p.userId !== undefined && p.userId.trim() !== '';
+        }
+        // メールアドレスの場合
+        if (p.type === 'email') {
+          return p.email !== undefined && p.email.trim() !== '';
+        }
+        return false;
+      });
+
       console.log('検証前のプレイヤー情報:', players);
       console.log('検証後のプレイヤー情報:', validPlayers);
 
       if (validPlayers.length !== 4) {
-        throw new Error('プレイヤーは4人必要です');
+        throw new Error('プレイヤーは4人必要です。全てのプレイヤー情報を入力してください。');
       }
 
       // プレイヤー情報を保存
@@ -354,6 +382,8 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
       setShowSettings(false);
       return;
     }
+    // モーダルを閉じてから対局を開始
+    onClose(); // 親モーダルを閉じる
     onStart(validPlayers, settings);
   };
 
@@ -363,13 +393,26 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
 
   return (
     <>
-      <Modal show={isOpen && !showSettings} onHide={onClose} size="lg">
+      <Modal 
+        show={isOpen && !showSettings} 
+        onHide={onClose} 
+        size="lg"
+        backdrop="static"
+        keyboard={false}
+      >
         <Modal.Header closeButton>
           <Modal.Title>対局を開始</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <form onSubmit={handleSubmit}>
             <div className="position-relative">
+              {errors.global && (
+                <Alert variant="danger" className="mb-3">
+                  {errors.global.map((error, index) => (
+                    <div key={index}>{error}</div>
+                  ))}
+                </Alert>
+              )}
               <div className="row g-3">
                 {players.map((player, index) => (
                   <div key={player.id} className="col-6">
@@ -400,11 +443,15 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
                             isInvalid={!!errors[player.id]?.length}
                           >
                             <option value="">フレンドを選択</option>
-                            {friends.map((friend) => (
-                              <option key={friend.friend.id} value={friend.friend.id}>
-                                {friend.friend.name || '名無し'} @{friend.friend.id}
-                              </option>
-                            ))}
+                            {friends.length > 0 ? (
+                              friends.map((friend) => (
+                                <option key={friend.friend.id} value={friend.friend.id}>
+                                  {friend.friend.name || '名無し'} @{friend.friend.id}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="" disabled>フレンドが登録されていません</option>
+                            )}
                           </Form.Select>
                         )}
 

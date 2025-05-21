@@ -12,10 +12,11 @@ export interface Player {
 }
 
 export interface Friend {
+  id: string;
   friend: {
     id: string;
     name: string | null;
-    email: string | null;
+    iconPath: string | null;
   };
 }
 
