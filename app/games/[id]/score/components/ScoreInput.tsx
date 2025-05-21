@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import * as bootstrap from 'bootstrap';
 
 interface ScoreInputProps {
   gameId: string;
@@ -140,8 +141,10 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
       return;
     }
 
+    // 末尾の00を除去して保存
+    const cleanValue = value.replace(/00$/, '');
     setScores(prev => {
-      const newScores = { ...prev, [playerId]: value };
+      const newScores = { ...prev, [playerId]: cleanValue };
       return newScores;
     });
   }, []);
@@ -167,11 +170,23 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     e.preventDefault();
     if (isSubmitting) return;
 
+    // 入力値のバリデーション
+    const invalidScores = Object.entries(scores).filter(([_, score]) => {
+      if (score === '') return false;
+      const numScore = parseInt(score);
+      return isNaN(numScore) || numScore % 100 !== 0;
+    });
+
+    if (invalidScores.length > 0) {
+      alert('点数は100の倍数で入力してください');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const numericScores: Record<string, number> = {};
       Object.entries(scores).forEach(([id, score]) => {
-        numericScores[id] = score === '' ? 0 : parseInt(score, 10);
+        numericScores[id] = score === '' ? 0 : parseInt(score);
       });
 
       // プレイヤーの位置に基づいてスコアを変換
@@ -230,101 +245,228 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     }
   };
 
+  // ツールチップの初期化
+  useEffect(() => {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    
+    return () => {
+      tooltipList.forEach(tooltip => tooltip.dispose());
+    };
+  }, [players, calculatedScores]);
+
   return (
     <div className="card">
       <div className="card-header">
-        <h5 className="card-title mb-0">スコア入力 - {currentRound}局</h5>
+        <h5 className="card-title mb-0" style={{ fontSize: 'clamp(1.1rem, 3vw, 1.25rem)' }}>スコア入力 - {currentRound}局</h5>
       </div>
       <div className="card-body">
-        <div className="table-responsive">
-          <table className="table table-bordered">
-            <thead>
-              <tr>
-                <th>項目</th>
-                {players.map(player => (
-                  <th key={player.id}>
-                    {player.name}
-                    <br />
-                    <small className="text-muted">
+        {/* PC表示用テーブル */}
+        <div className="d-none d-md-block">
+          <div className="table-responsive">
+            <table className="table table-bordered" style={{ tableLayout: 'fixed' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '60px', fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>項目</th>
+                  {players.map(player => (
+                    <th key={player.id} style={{ width: '25%', fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>
+                      <div className="d-flex flex-column align-items-center">
+                        <span 
+                          className="text-truncate" 
+                          style={{ maxWidth: '100%' }}
+                          title={player.name}
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="top"
+                        >
+                          {player.name}
+                        </span>
+                        <small className="text-muted" style={{ fontSize: 'clamp(0.6rem, 1.8vw, 0.7rem)' }}>
+                          {player.position === 'east' && '東家'}
+                          {player.position === 'south' && '南家'}
+                          {player.position === 'west' && '西家'}
+                          {player.position === 'north' && '北家'}
+                        </small>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>点数</td>
+                  {players.map(player => (
+                    <td key={player.id}>
+                      <div className="input-group input-group-sm">
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={scores[player.id]}
+                          onChange={(e) => handleScoreChange(player.id, e.target.value)}
+                          style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}
+                          maxLength={6}
+                        />
+                        <span className="input-group-text" style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>00</span>
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>焼き鳥</td>
+                  {players.map(player => (
+                    <td key={player.id}>
+                      <div className="form-check d-flex justify-content-center">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={yakitori[player.id]}
+                          onChange={(e) => handleYakitoriChange(player.id, e.target.checked)}
+                          style={{ width: 'clamp(0.9rem, 2.5vw, 1.1rem)', height: 'clamp(0.9rem, 2.5vw, 1.1rem)' }}
+                        />
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* スマートフォン表示用フォーム */}
+        <div className="d-md-none">
+          {players.map(player => (
+            <div key={player.id} className="card mb-3">
+              <div className="card-header py-2">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1rem)' }}>{player.name}</span>
+                    <small className="text-muted ms-2" style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>
                       {player.position === 'east' && '東家'}
                       {player.position === 'south' && '南家'}
                       {player.position === 'west' && '西家'}
                       {player.position === 'north' && '北家'}
                     </small>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>素点</td>
-                {players.map(player => (
-                  <td key={player.id}>
-                    <div className="input-group">
+                  </div>
+                </div>
+              </div>
+              <div className="card-body py-2">
+                <div className="row g-2">
+                  <div className="col-6">
+                    <label className="form-label mb-1" style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>点数</label>
+                    <div className="input-group input-group-sm">
                       <input
                         type="text"
                         className="form-control"
-                        value={scores[player.id] || ''}
+                        value={scores[player.id]}
                         onChange={(e) => handleScoreChange(player.id, e.target.value)}
-                        placeholder="点数"
-                        inputMode="numeric"
+                        style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}
+                        maxLength={6}
                       />
-                      <span className="input-group-text">00</span>
+                      <span className="input-group-text" style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>00</span>
                     </div>
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td>焼き鳥</td>
-                {players.map(player => (
-                  <td key={player.id}>
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label mb-1" style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>焼き鳥</label>
                     <div className="form-check">
                       <input
                         type="checkbox"
                         className="form-check-input"
-                        checked={yakitori[player.id] || false}
+                        checked={yakitori[player.id]}
                         onChange={(e) => handleYakitoriChange(player.id, e.target.checked)}
+                        style={{ width: 'clamp(0.9rem, 2.5vw, 1.1rem)', height: 'clamp(0.9rem, 2.5vw, 1.1rem)' }}
                       />
                     </div>
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td>ウマ</td>
-                {players.map(player => (
-                  <td key={player.id}>
-                    {calculatedScores.find(score => score.id === player.id)?.uma.toLocaleString() || '0'}
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td>合計</td>
-                {players.map(player => (
-                  <td key={player.id}>
-                    {calculatedScores.find(score => score.id === player.id)?.totalScore.toFixed(1) || '0.0'}
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td>順位</td>
-                {players.map(player => (
-                  <td key={player.id}>
-                    {calculatedScores.find(score => score.id === player.id)?.rank || '-'}位
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <div className="text-center mt-3">
+        <div className="mt-4">
+          <h6 style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1rem)' }}>計算結果</h6>
+          <div className="table-responsive">
+            <table className="table table-bordered" style={{ tableLayout: 'fixed' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '60px', fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>項目</th>
+                  {calculatedScores.map(score => (
+                    <th key={score.id} style={{ width: '25%', fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>
+                      <div className="d-flex flex-column align-items-center">
+                        <span 
+                          className="text-truncate" 
+                          style={{ maxWidth: '100%' }}
+                          title={score.name}
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="top"
+                        >
+                          {score.name}
+                        </span>
+                        <small className="text-muted" style={{ fontSize: 'clamp(0.6rem, 1.8vw, 0.7rem)' }}>
+                          {score.position === 'east' && '東家'}
+                          {score.position === 'south' && '南家'}
+                          {score.position === 'west' && '西家'}
+                          {score.position === 'north' && '北家'}
+                        </small>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>点数</td>
+                  {calculatedScores.map(score => (
+                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                      {score.rawScore.toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>ウマ</td>
+                  {calculatedScores.map(score => (
+                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                      {score.uma > 0 ? '+' : ''}{score.uma.toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>焼き鳥</td>
+                  {calculatedScores.map(score => (
+                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                      {score.yakitori ? `-${gameSettings.yakitori.toLocaleString()}` : '0'}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>合計</td>
+                  {calculatedScores.map(score => (
+                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                      {score.totalScore > 0 ? '+' : ''}{score.totalScore.toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>順位</td>
+                  {calculatedScores.map(score => (
+                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                      {score.rank}位
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-4 d-flex justify-content-end">
           <button
             type="submit"
             className="btn btn-primary"
             onClick={handleSubmit}
             disabled={isSubmitting}
+            style={{ minWidth: '120px', fontSize: 'clamp(0.9rem, 3vw, 1rem)' }}
           >
-            {isSubmitting ? '保存中...' : '登録'}
+            {isSubmitting ? '保存中...' : '保存'}
           </button>
         </div>
       </div>

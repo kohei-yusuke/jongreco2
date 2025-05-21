@@ -194,40 +194,52 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
           更新
         </button>
       </div>
-      <div className="card-body">
+      <div className="card-body p-0">
         <div className="table-responsive">
-          <table className="table table-bordered">
+          <table className="table table-bordered mb-0">
             <thead>
               <tr>
-                <th>局</th>
-                <th>東家</th>
-                <th>南家</th>
-                <th>西家</th>
-                <th>北家</th>
-                <th>操作</th>
+                <th className="w-10 text-center">局</th>
+                <th className="w-22 text-center">東家</th>
+                <th className="w-22 text-center">南家</th>
+                <th className="w-22 text-center">西家</th>
+                <th className="w-22 text-center">北家</th>
+                <th className="w-10 text-center">操作</th>
               </tr>
             </thead>
             <tbody>
               {scores.map((score) => (
                 <tr key={score.id}>
-                  <td>{score.round}</td>
-                  <td className={score.east > 0 ? 'text-success' : score.east < 0 ? 'text-danger' : ''}>
-                    {score.east.toLocaleString()}
-                    {score.yakitori?.east && <span className="ms-1">🐔</span>}
+                  <td className="text-center">{score.round}</td>
+                  <td className={`text-end ${score.east > 0 ? 'text-success' : score.east < 0 ? 'text-danger' : ''}`}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="d-none d-sm-inline">{score.east.toLocaleString()}</span>
+                      <span className="d-inline d-sm-none">{score.east.toLocaleString()}</span>
+                      {score.yakitori?.east && <span className="ms-1">🐔</span>}
+                    </div>
                   </td>
-                  <td className={score.south > 0 ? 'text-success' : score.south < 0 ? 'text-danger' : ''}>
-                    {score.south.toLocaleString()}
-                    {score.yakitori?.south && <span className="ms-1">🐔</span>}
+                  <td className={`text-end ${score.south > 0 ? 'text-success' : score.south < 0 ? 'text-danger' : ''}`}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="d-none d-sm-inline">{score.south.toLocaleString()}</span>
+                      <span className="d-inline d-sm-none">{score.south.toLocaleString()}</span>
+                      {score.yakitori?.south && <span className="ms-1">🐔</span>}
+                    </div>
                   </td>
-                  <td className={score.west > 0 ? 'text-success' : score.west < 0 ? 'text-danger' : ''}>
-                    {score.west.toLocaleString()}
-                    {score.yakitori?.west && <span className="ms-1">🐔</span>}
+                  <td className={`text-end ${score.west > 0 ? 'text-success' : score.west < 0 ? 'text-danger' : ''}`}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="d-none d-sm-inline">{score.west.toLocaleString()}</span>
+                      <span className="d-inline d-sm-none">{score.west.toLocaleString()}</span>
+                      {score.yakitori?.west && <span className="ms-1">🐔</span>}
+                    </div>
                   </td>
-                  <td className={score.north > 0 ? 'text-success' : score.north < 0 ? 'text-danger' : ''}>
-                    {score.north.toLocaleString()}
-                    {score.yakitori?.north && <span className="ms-1">🐔</span>}
+                  <td className={`text-end ${score.north > 0 ? 'text-success' : score.north < 0 ? 'text-danger' : ''}`}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="d-none d-sm-inline">{score.north.toLocaleString()}</span>
+                      <span className="d-inline d-sm-none">{score.north.toLocaleString()}</span>
+                      {score.yakitori?.north && <span className="ms-1">🐔</span>}
+                    </div>
                   </td>
-                  <td>
+                  <td className="text-center">
                     <button
                       className="btn btn-sm btn-outline-danger"
                       onClick={() => setDeleteConfirmScore(score)}
@@ -239,9 +251,9 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
               ))}
               {chipEnabled && (
                 <tr className="table-light">
-                  <td>チップ</td>
+                  <td className="text-center">チップ</td>
                   {['east', 'south', 'west', 'north'].map(position => (
-                    <td key={position}>
+                    <td key={position} className="text-end">
                       <div className="input-group input-group-sm">
                         <button
                           className="btn btn-outline-secondary"
@@ -265,33 +277,33 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
                 </tr>
               )}
               <tr className="table-secondary">
-                <td>総得点</td>
-                <td className={totals.east > 0 ? 'text-success' : totals.east < 0 ? 'text-danger' : ''}>
+                <td className="text-center">総得点</td>
+                <td className={`text-end ${totals.east > 0 ? 'text-success' : totals.east < 0 ? 'text-danger' : ''}`}>
                   {totals.east.toLocaleString()}
                 </td>
-                <td className={totals.south > 0 ? 'text-success' : totals.south < 0 ? 'text-danger' : ''}>
+                <td className={`text-end ${totals.south > 0 ? 'text-success' : totals.south < 0 ? 'text-danger' : ''}`}>
                   {totals.south.toLocaleString()}
                 </td>
-                <td className={totals.west > 0 ? 'text-success' : totals.west < 0 ? 'text-danger' : ''}>
+                <td className={`text-end ${totals.west > 0 ? 'text-success' : totals.west < 0 ? 'text-danger' : ''}`}>
                   {totals.west.toLocaleString()}
                 </td>
-                <td className={totals.north > 0 ? 'text-success' : totals.north < 0 ? 'text-danger' : ''}>
+                <td className={`text-end ${totals.north > 0 ? 'text-success' : totals.north < 0 ? 'text-danger' : ''}`}>
                   {totals.north.toLocaleString()}
                 </td>
                 <td></td>
               </tr>
               <tr className="table-secondary">
-                <td>順位</td>
-                <td>
+                <td className="text-center">順位</td>
+                <td className="text-center">
                   {ranks.east === 1 ? '👑 ' : ''}{ranks.east}位
                 </td>
-                <td>
+                <td className="text-center">
                   {ranks.south === 1 ? '👑 ' : ''}{ranks.south}位
                 </td>
-                <td>
+                <td className="text-center">
                   {ranks.west === 1 ? '👑 ' : ''}{ranks.west}位
                 </td>
-                <td>
+                <td className="text-center">
                   {ranks.north === 1 ? '👑 ' : ''}{ranks.north}位
                 </td>
                 <td></td>
