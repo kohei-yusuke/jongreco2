@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -41,35 +41,31 @@ interface ScoreGraphProps {
 export default function ScoreGraph({ gameId, onScoreUpdate }: ScoreGraphProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchScores = async () => {
+  const fetchScores = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await fetch(`/api/games/${gameId}/scores`);
-      if (!response.ok) {
-        throw new Error('スコアデータの取得に失敗しました');
-      }
       const data = await response.json();
-      setScores(data.scores || []);
+      if (response.ok) {
+        setScores(data.scores);
+      }
     } catch (error) {
       console.error('Error fetching scores:', error);
-      setError(error instanceof Error ? error.message : 'スコアデータの取得に失敗しました');
-    } finally {
-      setLoading(false);
     }
-  };
+    setLoading(false);
+  }, [gameId]);
 
   useEffect(() => {
     fetchScores();
-  }, [gameId]);
+  }, [gameId, fetchScores]);
 
   // スコアが更新されたときに履歴を更新
   useEffect(() => {
     if (onScoreUpdate) {
       fetchScores();
     }
-  }, [onScoreUpdate]);
+  }, [onScoreUpdate, fetchScores]);
 
   if (loading) {
     return (
@@ -81,13 +77,7 @@ export default function ScoreGraph({ gameId, onScoreUpdate }: ScoreGraphProps) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="alert alert-danger" role="alert">
-        {error}
-      </div>
-    );
-  }
+  // エラー表示を削除
 
   // 累計スコアを計算
   const cumulativeScores = scores.reduce((acc, score) => {
@@ -163,4 +153,4 @@ export default function ScoreGraph({ gameId, onScoreUpdate }: ScoreGraphProps) {
       <Line options={options} data={data} />
     </div>
   );
-} 
+}

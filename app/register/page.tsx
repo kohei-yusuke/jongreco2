@@ -42,7 +42,7 @@ export default function RegisterPage() {
         const data = await response.json();
         setError(data.message || '登録に失敗しました');
       }
-    } catch (err) {
+    } catch {
       setError('登録処理中にエラーが発生しました');
     }
   };

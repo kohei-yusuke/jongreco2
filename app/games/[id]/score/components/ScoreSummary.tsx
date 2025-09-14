@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface ScoreSummaryProps {
   scores: {
@@ -49,8 +49,7 @@ export default function ScoreSummary({ scores, gameSettings, players, onSubmit }
   const [showSettings, setShowSettings] = useState(false);
   const [playerScores, setPlayerScores] = useState<PlayerScore[]>([]);
 
-  // プレイヤーの得点を計算
-  const calculateScores = (): PlayerScore[] => {
+  const calculateScores = useCallback((): PlayerScore[] => {
     const calculatedScores: PlayerScore[] = players.map(player => {
       const rawScore = scores[player.position as keyof typeof scores];
       const yakitoriPoints = yakitori[player.position as keyof typeof yakitori] ? gameSettings.yakitoriPoints * 3 : 0;
@@ -99,12 +98,12 @@ export default function ScoreSummary({ scores, gameSettings, players, onSubmit }
     }
 
     return calculatedScores;
-  };
+  }, [scores, yakitori, gameSettings, players]);
 
   useEffect(() => {
     const newScores = calculateScores();
     setPlayerScores(newScores);
-  }, [scores, yakitori, gameSettings]);
+  }, [scores, yakitori, gameSettings, calculateScores]);
 
   return (
     <div>
@@ -211,4 +210,4 @@ export default function ScoreSummary({ scores, gameSettings, players, onSubmit }
       </div>
     </div>
   );
-} 
+}

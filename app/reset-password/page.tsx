@@ -29,7 +29,7 @@ export default function ResetPasswordPage() {
         const data = await response.json();
         setError(data.message || 'リセットメールの送信に失敗しました');
       }
-    } catch (err) {
+    } catch {
       setError('処理中にエラーが発生しました');
     }
   };

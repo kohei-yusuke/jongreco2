@@ -12,7 +12,7 @@ export default function FriendSearchModal({ isOpen, onClose }: FriendSearchModal
   const { data: session } = useSession();
   const [searchType, setSearchType] = useState<'id' | 'email'>('id');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResult, setSearchResult] = useState<any>(null);
+  const [searchResult, setSearchResult] = useState<{ id: string; email: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -148,4 +148,4 @@ export default function FriendSearchModal({ isOpen, onClose }: FriendSearchModal
       <div className="modal-backdrop fade show" style={{ zIndex: 1040 }}></div>
     </>
   );
-} 
+}

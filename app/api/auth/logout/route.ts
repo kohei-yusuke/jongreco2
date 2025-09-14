@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function POST() {
   try {
-    // トークンを含むクッキーを削除
-    cookies().delete('token');
-
-    return NextResponse.json(
+    const response = NextResponse.json(
       { message: 'ログアウトしました' },
       { status: 200 }
     );
-  } catch (error) {
+    response.headers.set('Set-Cookie', 'token=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax');
+    return response;
+  } catch {
     return NextResponse.json(
       { message: 'ログアウト処理中にエラーが発生しました' },
       { status: 500 }
     );
   }
-} 
+}

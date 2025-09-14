@@ -19,10 +19,10 @@ export async function POST(request: Request) {
       { message: 'トークンが有効です' },
       { status: 200 }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { message: 'トークンが無効です' },
       { status: 400 }
     );
   }
-} 
+}

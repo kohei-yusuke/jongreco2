@@ -1,35 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '../auth/auth.config';
 import prisma from '@/lib/prisma';
 
-interface Player {
+export interface Player {
   id?: string;
   name: string;
   email?: string;
   position: string;
   isCurrentUser: boolean;
 }
-
-interface GameRequest {
-  players: Player[];
-  settings: {
-    initialPoints: number;
-    returnPoints: number;
-    uma1: number;
-    uma2: number;
-    uma3: number;
-    uma4: number;
-    chipPoints: number;
-    chipEnabled: boolean;
-    yakitoriPoints: number;
-    yakitoriEnabled: boolean;
-    yakitoriMode: string;
-  };
-}
-
-// メールアドレスのバリデーション用正規表現
-const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export async function POST(request: Request) {
   try {
@@ -133,4 +113,4 @@ export async function POST(request: Request) {
       },
     });
   }
-} 
+}

@@ -24,11 +24,10 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // ユーザーの作成
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        name: email.split('@')[0], // メールアドレスの@より前の部分を名前として使用
       },
     });
 
@@ -43,4 +42,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

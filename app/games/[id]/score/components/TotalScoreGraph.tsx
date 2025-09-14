@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -43,7 +43,7 @@ export default function TotalScoreGraph({ gameId, onScoreUpdate }: TotalScoreGra
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchScores = async () => {
+  const fetchScores = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/games/${gameId}/scores`);
@@ -58,18 +58,18 @@ export default function TotalScoreGraph({ gameId, onScoreUpdate }: TotalScoreGra
     } finally {
       setLoading(false);
     }
-  };
+  }, [gameId]);
 
   useEffect(() => {
     fetchScores();
-  }, [gameId]);
+  }, [gameId, fetchScores]);
 
   // スコアが更新されたときに履歴を更新
   useEffect(() => {
     if (onScoreUpdate) {
       fetchScores();
     }
-  }, [onScoreUpdate]);
+  }, [onScoreUpdate, fetchScores]);
 
   if (loading) {
     return (

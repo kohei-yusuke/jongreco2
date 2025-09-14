@@ -30,7 +30,7 @@ export default function QRCodeModal({ isOpen, onClose }: QRCodeModalProps) {
       } else {
         setError(data.error || 'QRコードの取得に失敗しました');
       }
-    } catch (error) {
+    } catch {
       setError('QRコードの取得に失敗しました');
     } finally {
       setLoading(false);

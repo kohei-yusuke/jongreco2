@@ -14,17 +14,21 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
   useEffect(() => {
     if (isOpen) {
-      const newScanner = new Html5QrcodeScanner('qr-reader', {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-      });
+      const newScanner = new Html5QrcodeScanner(
+        'qr-reader',
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        false // verbose flag
+      );
 
       newScanner.render((decodedText) => {
         // QRコードから読み取ったユーザーIDを処理
         onScan(decodedText);
         newScanner.clear();
         onClose();
-      }, (error) => {
+      }, () => {
         // エラーは無視（継続的にスキャンするため）
       });
 
@@ -36,7 +40,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
         scanner.clear();
       }
     };
-  }, [isOpen]);
+  }, [isOpen, onClose, onScan, scanner]);
 
   return (
     <Modal show={isOpen} onHide={onClose} centered>

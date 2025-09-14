@@ -38,28 +38,6 @@ interface Game {
   currentRound: number;
 }
 
-interface PlayerStats {
-  id: string;
-  name: string;
-  position: string;
-  scores: {
-    round: number;
-    score: number;
-  }[];
-  totalScore: number;
-  rank: number;
-}
-
-interface Score {
-  id: string;
-  round: number;
-  east: number;
-  south: number;
-  west: number;
-  north: number;
-}
-
-
 export default function ScorePage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -373,4 +351,4 @@ export default function ScorePage() {
       {showSettingsModal && <div className="modal-backdrop show"></div>}
     </div>
   );
-} 
+}

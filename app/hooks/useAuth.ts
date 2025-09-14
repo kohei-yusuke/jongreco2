@@ -25,7 +25,7 @@ export function useAuth() {
       } else {
         setUser(null);
       }
-    } catch (error) {
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
@@ -47,7 +47,7 @@ export function useAuth() {
         return true;
       }
       return false;
-    } catch (error) {
+    } catch {
       return false;
     }
   };
@@ -59,8 +59,8 @@ export function useAuth() {
       });
       setUser(null);
       router.push('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
+      console.error('Logout error');
     }
   };
 
@@ -71,4 +71,4 @@ export function useAuth() {
     logout,
     checkAuth,
   };
-} 
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
+import { Session } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { format, isValid } from 'date-fns';
@@ -8,6 +9,32 @@ import { ja } from 'date-fns/locale';
 import FriendSearchModal from '@/app/components/FriendSearchModal';
 import QRCodeModal from '@/app/components/QRCodeModal';
 import QRScanner from '@/app/components/QRScanner';
+
+interface Friend {
+  id: string;
+  friend: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface FriendRequest {
+  id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  fromId: string;
+  toId: string;
+  from: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  to: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
 
 export default function ProfilePage() {
   const { data: session, status, update } = useSession();
@@ -490,9 +517,9 @@ export default function ProfilePage() {
   );
 }
 
-function FriendSection({ session }: { session: any }) {
-  const [requests, setRequests] = useState<any[]>([]);
-  const [friends, setFriends] = useState<any[]>([]);
+function FriendSection({ session }: { session: Session }) {
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -507,7 +534,7 @@ function FriendSection({ session }: { session: any }) {
       } else {
         setError(data.error || 'リクエスト取得に失敗しました');
       }
-    } catch (e) {
+    } catch {
       setError('リクエスト取得に失敗しました');
     }
     setLoading(false);
@@ -524,7 +551,7 @@ function FriendSection({ session }: { session: any }) {
       } else {
         setError(data.error || 'フレンド取得に失敗しました');
       }
-    } catch (e) {
+    } catch {
       setError('フレンド取得に失敗しました');
     }
     setLoading(false);
@@ -637,4 +664,4 @@ function FriendSection({ session }: { session: any }) {
       )}
     </div>
   );
-} 
+}

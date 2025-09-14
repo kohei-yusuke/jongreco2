@@ -76,7 +76,7 @@ export default function ResetPasswordConfirmPage() {
         const data = await response.json();
         setError(data.message || 'パスワードの再設定に失敗しました');
       }
-    } catch (err) {
+    } catch {
       setError('処理中にエラーが発生しました');
     }
   };

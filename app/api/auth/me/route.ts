@@ -40,10 +40,10 @@ export async function GET() {
     }
 
     return NextResponse.json(user);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { message: '認証が必要です' },
       { status: 401 }
     );
   }
-} 
+}
