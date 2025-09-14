@@ -19,6 +19,19 @@ interface GameHistory {
     totalScore: number;
     rank: number;
   }[];
+  game: {
+    settings: {
+      uma: {
+        first: number;
+        second: number;
+        third: number;
+        fourth: number;
+      };
+      yakitori: number;
+      yakitoriEnabled: boolean;
+    };
+    yakitoriPlayers: string[];
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -139,6 +152,36 @@ export default function GameHistoryList() {
     fetchHistories();
   }, []);
 
+  const calculateFinalScore = (player: GameHistory['players'][0], history: GameHistory): number => {
+    let finalScore = player.totalScore;
+
+    // ウマを加算
+    if (history.game.settings.uma) {
+      const uma = {
+        1: history.game.settings.uma.first,
+        2: history.game.settings.uma.second,
+        3: history.game.settings.uma.third,
+        4: history.game.settings.uma.fourth,
+      }[player.rank] || 0;
+      finalScore += uma * 1000;
+    }
+
+    // 焼き鳥を計算
+    if (history.game.settings.yakitoriEnabled && history.game.settings.yakitori) {
+      const isYakitori = history.game.yakitoriPlayers.includes(player.player.id);
+      if (isYakitori) {
+        finalScore -= history.game.settings.yakitori * 1000;
+      } else if (history.game.yakitoriPlayers.length > 0) {
+        // 焼き鳥でないプレイヤーに分配
+        const nonYakitoriPlayers = 4 - history.game.yakitoriPlayers.length;
+        const distribution = (history.game.settings.yakitori * 1000 * history.game.yakitoriPlayers.length) / nonYakitoriPlayers;
+        finalScore += distribution;
+      }
+    }
+
+    return finalScore;
+  };
+
   return (
     <>
       {loading ? (
@@ -197,7 +240,17 @@ export default function GameHistoryList() {
                   </td>
                   <td>
                     {history.players.map((player) => (
-                      <div key={player.player.id}>{player.totalScore.toLocaleString()}点</div>
+                      <div key={player.player.id} className={`font-bold ${
+                        player.rank === 1 ? 'text-red-600' :
+                        player.rank === 2 ? 'text-blue-600' :
+                        player.rank === 3 ? 'text-green-600' :
+                        'text-gray-600'
+                      }`}>
+                        {(calculateFinalScore(player, history) / 1000).toFixed(1)}
+                        {history.game.yakitoriPlayers?.includes(player.player.id) && (
+                          <span className="ml-2 text-yellow-500" title="焼き鳥">🍗</span>
+                        )}
+                      </div>
                     ))}
                   </td>
                   <td>
@@ -222,4 +275,4 @@ export default function GameHistoryList() {
       />
     </>
   );
-} 
+}

@@ -35,6 +35,12 @@ export async function GET() {
             player: true
           }
         },
+        game: {
+          select: {
+            settings: true,
+            yakitoriPlayers: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',
