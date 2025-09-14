@@ -123,36 +123,24 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
       score.rank = index + 1;
     });
 
-    // 各プレイヤーの得点を計算
+    // 各プレイヤーの得点計算
     playerScores.forEach(score => {
-      if (score.rank === 1) {
-        // 1位の場合は2-4位の合計のマイナスを取る
-        const othersTotal = playerScores
-          .filter(s => s.rank > 1)
-          .reduce((sum, s) => {
-            // 2-4位の点数計算
-            const adjustedPoints = s.rawScore - gameSettings.returnPoints;
-            const yakitoriAdj = s.yakitori ? -gameSettings.yakitori : 0;
-            let uma = 0;
-            if (s.rank === 2) uma = gameSettings.uma.second;
-            else if (s.rank === 3) uma = gameSettings.uma.third;
-            else if (s.rank === 4) uma = gameSettings.uma.fourth;
-            const total = (adjustedPoints + yakitoriAdj) / 1000 + uma;
-            return sum + total;
-          }, 0);
-        score.uma = gameSettings.uma.first;
-        score.totalScore = -othersTotal;
-      } else {
-        // 2-4位の計算
-        const adjustedPoints = score.rawScore - gameSettings.returnPoints;
-        const yakitoriAdj = score.yakitori ? -gameSettings.yakitori : 0;
-        let uma = 0;
-        if (score.rank === 2) uma = gameSettings.uma.second;
-        else if (score.rank === 3) uma = gameSettings.uma.third;
-        else if (score.rank === 4) uma = gameSettings.uma.fourth;
-        score.uma = uma;
-        score.totalScore = (adjustedPoints + yakitoriAdj) / 1000 + uma;
-      }
+      // 返し点の計算（2位以下に適用）
+      const basePoints = score.rank === 1 ? score.rawScore : score.rawScore - gameSettings.returnPoints;
+
+      // 焼き鳥の計算
+      const yakitoriPoints = score.yakitori ? -gameSettings.yakitori : 0;
+
+      // ウマの設定
+      let uma = 0;
+      if (score.rank === 1) uma = gameSettings.uma.first;
+      else if (score.rank === 2) uma = gameSettings.uma.second;
+      else if (score.rank === 3) uma = gameSettings.uma.third;
+      else if (score.rank === 4) uma = gameSettings.uma.fourth;
+      score.uma = uma;
+
+      // 最終得点計算
+      score.totalScore = (basePoints + yakitoriPoints) / 1000 + uma;
     });
 
     setCalculatedScores(playerScores);
@@ -485,19 +473,9 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
                   {players.map(player => {
                     const score = calculatedScores.find(s => s.id === player.id);
                     if (!score) return <td key={player.id}>0.0</td>;
-
-                    let displayScore = score.totalScore;
-                    if (score.rank === 1) {
-                      // 1位の場合は2-4位の合計の-1倍
-                      const othersTotal = calculatedScores
-                        .filter(s => s.rank > 1)
-                        .reduce((sum, s) => sum + s.totalScore, 0);
-                      displayScore = -othersTotal;
-                    }
-
                     return (
                       <td key={player.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
-                        {(displayScore > 0 ? '+' : '') + displayScore.toFixed(1)}
+                        {(score.totalScore > 0 ? '+' : '') + score.totalScore.toFixed(1)}
                       </td>
                     );
                   })}
