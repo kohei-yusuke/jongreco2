@@ -50,52 +50,54 @@ export default function ScoreSummary({ scores, gameSettings, players, onSubmit }
   const [playerScores, setPlayerScores] = useState<PlayerScore[]>([]);
 
   const calculateScores = useCallback((): PlayerScore[] => {
-    const calculatedScores: PlayerScore[] = players.map(player => {
-      const rawScore = scores[player.position as keyof typeof scores];
-      const yakitoriPoints = yakitori[player.position as keyof typeof yakitori] ? gameSettings.yakitoriPoints * 3 : 0;
-      const adjustedScore = (rawScore - gameSettings.returnPoints - yakitoriPoints) / 100;
+    const calculatedScores: PlayerScore[] = players.map(player => ({
+      id: player.id,
+      name: player.name,
+      position: player.position,
+      rawScore: scores[player.position as keyof typeof scores],
+      yakitori: yakitori[player.position as keyof typeof yakitori],
+      uma: 0,
+      totalScore: 0,
+      rank: 0,
+    }));
 
-      return {
-        id: player.id,
-        name: player.name,
-        position: player.position,
-        rawScore,
-        yakitori: yakitori[player.position as keyof typeof yakitori],
-        uma: 0, // 後で計算
-        totalScore: adjustedScore,
-        rank: 0, // 後で計算
-      };
+    // 素点で順位付け
+    calculatedScores.sort((a, b) => b.rawScore - a.rawScore);
+    calculatedScores.forEach((score, index) => {
+      score.rank = index + 1;
     });
 
-    // 順位付け
-    calculatedScores.sort((a: PlayerScore, b: PlayerScore) => b.totalScore - a.totalScore);
-    calculatedScores.forEach((score: PlayerScore, index: number) => {
-      score.rank = index + 1;
-      // ウマの設定
-      switch (score.rank) {
-        case 1:
-          score.uma = gameSettings.uma1;
-          break;
-        case 2:
-          score.uma = gameSettings.uma2;
-          break;
-        case 3:
-          score.uma = gameSettings.uma3;
-          break;
-        case 4:
-          score.uma = gameSettings.uma4;
-          break;
+    // 各プレイヤーの得点を計算
+    calculatedScores.forEach(score => {
+      if (score.rank === 1) {
+        // 1位の場合は2-4位の合計のマイナスを取る
+        const othersTotal = calculatedScores
+          .filter(s => s.rank > 1)
+          .reduce((sum, s) => {
+            // 2-4位の点数計算
+            const adjustedPoints = s.rawScore - gameSettings.returnPoints;
+            const yakitoriAdj = s.yakitori ? -gameSettings.yakitoriPoints : 0;
+            let uma = 0;
+            if (s.rank === 2) uma = gameSettings.uma2;
+            else if (s.rank === 3) uma = gameSettings.uma3;
+            else if (s.rank === 4) uma = gameSettings.uma4;
+            const total = (adjustedPoints + yakitoriAdj) / 1000 + uma;
+            return sum + total;
+          }, 0);
+        score.totalScore = -othersTotal;
+        score.uma = gameSettings.uma1;
+      } else {
+        // 2-4位の計算
+        const adjustedPoints = score.rawScore - gameSettings.returnPoints;
+        const yakitoriAdj = score.yakitori ? -gameSettings.yakitoriPoints : 0;
+        let uma = 0;
+        if (score.rank === 2) uma = gameSettings.uma2;
+        else if (score.rank === 3) uma = gameSettings.uma3;
+        else if (score.rank === 4) uma = gameSettings.uma4;
+        score.uma = uma;
+        score.totalScore = (adjustedPoints + yakitoriAdj) / 1000 + uma;
       }
     });
-
-    // 1位の得点を再計算
-    const firstPlace = calculatedScores.find((score: PlayerScore) => score.rank === 1);
-    if (firstPlace) {
-      const othersTotal = calculatedScores
-        .filter((score: PlayerScore) => score.rank !== 1)
-        .reduce((sum: number, score: PlayerScore) => sum + score.totalScore, 0);
-      firstPlace.totalScore = -1 * othersTotal;
-    }
 
     return calculatedScores;
   }, [scores, yakitori, gameSettings, players]);
