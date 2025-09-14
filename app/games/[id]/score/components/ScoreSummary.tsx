@@ -186,10 +186,38 @@ export default function ScoreSummary({ scores, gameSettings, players, onSubmit }
               ))}
             </tr>
             <tr>
-              <th>合計得点</th>
-              {playerScores.map(score => (
-                <td key={score.id}>{score.totalScore !== undefined ? score.totalScore.toLocaleString() : ''}</td>
-              ))}
+              <th>得点計算</th>
+              {playerScores.map(score => {
+                // 2位以下は返し点を引く
+                const rawScoreText = score.rawScore.toLocaleString();
+                const returnPointsText = score.rank > 1 ? ` - ${gameSettings.returnPoints.toLocaleString()}` : '';
+                const baseScore = score.rank === 1 ? score.rawScore :
+                  score.rawScore - gameSettings.returnPoints;
+
+                // 焼き鳥計算
+                const yakitoriAdj = score.yakitori && gameSettings.yakitoriEnabled ? -gameSettings.yakitoriPoints : 0;
+                const yakitoriText = yakitoriAdj !== 0 ? ` ${yakitoriAdj.toLocaleString()}` : '';
+
+                // 1000で割る前の中間計算
+                const midScore = baseScore + yakitoriAdj;
+                
+                // 最終計算
+                return (
+                  <td key={score.id} className="p-2">
+                    <div className="text-start small">
+                      <div>{rawScoreText}{returnPointsText}</div>
+                      {yakitoriText && <div>焼き鳥: {yakitoriText}</div>}
+                      <div className="text-muted">
+                        = {midScore.toLocaleString()} ÷ 1000 = {(midScore / 1000).toFixed(1)}
+                      </div>
+                      <div>ウマ: {score.uma > 0 ? '+' : ''}{score.uma}</div>
+                      <div className="fw-bold border-top mt-1 pt-1">
+                        計: {score.totalScore.toLocaleString()}
+                      </div>
+                    </div>
+                  </td>
+                );
+              })}
             </tr>
             <tr>
               <th>順位</th>
