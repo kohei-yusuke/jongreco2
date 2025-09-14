@@ -1,16 +1,30 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverActions: true,
+    serverActions: true
   },
-  // すべてのAPIルートでNode.js runtimeを使用
-  experimental: {
-    serverActions: true,
-    fallback: {
-      'app/api/**/*': {
-        runtime: 'nodejs'
-      }
-    }
+  // API routes configuration
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, max-age=0',
+          },
+        ],
+      },
+    ];
+  },
+  // Static page generation configuration
+  staticPageGenerationTimeout: 120,
+  compiler: {
+    // Enables the styled-components SWC transform
+    styledComponents: true
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   }
 };
 

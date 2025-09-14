@@ -15,6 +15,14 @@ const publicPaths = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // Set headers for API routes to force dynamic behavior
+  if (pathname.startsWith('/api/')) {
+    const response = NextResponse.next();
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    response.headers.set('x-middleware-cache', 'no-cache');
+    return response;
+  }
 
   // パブリックパスの場合は認証チェックをスキップ
   if (publicPaths.some(path => pathname.startsWith(path))) {

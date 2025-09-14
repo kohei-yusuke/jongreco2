@@ -4,7 +4,14 @@ import prisma from '@/lib/prisma';
 import { authOptions } from '@/app/api/auth/auth.config';
 
 export const runtime = 'nodejs';
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import prisma from '@/lib/prisma';
+import { authOptions } from '@/app/api/auth/auth.config';
+
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export async function GET() {
   try {
