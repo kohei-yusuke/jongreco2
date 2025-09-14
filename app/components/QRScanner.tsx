@@ -14,15 +14,17 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !scanner) {
       const newScanner = new Html5QrcodeScanner(
         'qr-reader',
         {
-          fps: 5,
+          fps: 10,
           qrbox: { width: 250, height: 250 },
           videoConstraints: {
             facingMode: "environment"
-          }
+          },
+          rememberLastUsedCamera: true,
+          showTorchButtonIfSupported: true
         },
         false // verbose flag
       );

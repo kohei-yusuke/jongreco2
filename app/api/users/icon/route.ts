@@ -19,12 +19,15 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('icon');
     
-    if (!file || !(file instanceof File)) {
+    if (!file || !(file instanceof Blob)) {
+      console.error('Invalid file:', file);
       return NextResponse.json({ error: 'アイコンファイルが必要です' }, { status: 400 });
     }
 
     // ファイルタイプの検証
-    if (!file.type.startsWith('image/')) {
+    const fileType = file.type || '';
+    if (!fileType.startsWith('image/')) {
+      console.error('Invalid file type:', fileType);
       return NextResponse.json({ error: '画像ファイルのみアップロード可能です' }, { status: 400 });
     }
 

@@ -30,14 +30,18 @@ export async function GET(request: Request) {
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: query },
-          { id: query }
-        ]
+          { email: { contains: query, mode: 'insensitive' } },
+          { id: { contains: query, mode: 'insensitive' } }
+        ],
+        NOT: {
+          id: session.user.id // 自分自身を除外
+        }
       },
       select: {
         id: true,
         name: true,
-        email: true
+        email: true,
+        iconPath: true
       }
     });
 
