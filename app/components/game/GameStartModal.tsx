@@ -124,7 +124,7 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [showSettings, setShowSettings] = useState(false);
   const [validPlayers, setValidPlayers] = useState<Player[]>([]);
-  const [gameSettings, setGameSettings] = useState<GameSettings>({
+  const [gameSettings] = useState<GameSettings>({
     initialPoints: 25000,
     returnPoints: 30000,
     chipPoints: 0,

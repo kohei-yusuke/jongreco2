@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import GameSettingsModal from '@/app/components/game/GameSettingsModal';
 
@@ -32,14 +32,8 @@ interface Game {
   };
 }
 
-interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
 
-export default function GamePage({ params }: PageProps) {
-  const resolvedParams = use(params);
+export default function GamePage() {
   const router = useRouter();
   const pathname = usePathname();
   const gameId = pathname.split('/')[2]; // /games/[id]/... から id を取得
@@ -222,7 +216,7 @@ export default function GamePage({ params }: PageProps) {
         <GameSettingsModal
           isOpen={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
-          onStart={(settings) => {
+          onStart={() => {
             // 設定の更新処理をここに実装
             setShowSettingsModal(false);
           }}

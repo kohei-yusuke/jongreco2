@@ -6,7 +6,7 @@ interface ScoreSubmitProps {
   onSuccess: () => void;
 }
 
-export default function ScoreSubmit({ gameId, round, onSuccess }: ScoreSubmitProps) {
+export default function ScoreSubmit({ onSuccess }: ScoreSubmitProps) {
   return (
     <div className="d-grid gap-2">
       <button

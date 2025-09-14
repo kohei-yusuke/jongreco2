@@ -72,7 +72,7 @@ export default function ScoreInput({
             count,
           })),
           yakitori: Object.entries(yakitori)
-            .filter(([_, value]) => value)
+            .filter(([, value]) => value)
             .map(([playerId]) => playerId),
         }),
       });

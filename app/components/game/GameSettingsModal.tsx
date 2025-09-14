@@ -13,19 +13,6 @@ interface GameSettingsModalProps {
   initialSettings: GameSettings;
 }
 
-const DEFAULT_SETTINGS: GameSettings = {
-  initialPoints: 25000,
-  returnPoints: 30000,
-  chipPoints: 0,
-  yakitoriPoints: 6000,
-  uma1: 20,
-  uma2: 10,
-  uma3: -10,
-  uma4: -20,
-  chipEnabled: false,
-  yakitoriEnabled: false,
-  yakitoriMode: 'distribution'
-};
 
 export default function GameSettingsModal({ isOpen, onClose, onStart, initialSettings }: GameSettingsModalProps) {
   const [settings, setSettings] = useState<GameSettings>(initialSettings);

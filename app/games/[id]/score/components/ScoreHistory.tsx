@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Score {
   id: string;
@@ -17,31 +17,15 @@ interface Score {
   };
 }
 
-interface Player {
-  id: string;
-  name: string;
-  position: 'east' | 'south' | 'west' | 'north';
-  user?: {
-    name: string;
-  };
-}
 
 interface ScoreHistoryProps {
   gameId: string;
-  players: {
-    id: string;
-    name: string;
-    position: 'east' | 'south' | 'west' | 'north';
-    user?: {
-      name: string;
-    };
-  }[];
   onScoreUpdate?: () => void;
   chipEnabled?: boolean;
   chipPoints?: number;
 }
 
-export default function ScoreHistory({ gameId, players, onScoreUpdate, chipEnabled, chipPoints }: ScoreHistoryProps) {
+export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipPoints }: ScoreHistoryProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +46,7 @@ export default function ScoreHistory({ gameId, players, onScoreUpdate, chipEnabl
     north: { value: '', isPositive: true }
   });
 
-  const fetchGameSettings = async () => {
+  const fetchGameSettings = useCallback(async () => {
     try {
       const response = await fetch(`/api/games/${gameId}`);
       if (!response.ok) {
@@ -76,9 +60,9 @@ export default function ScoreHistory({ gameId, players, onScoreUpdate, chipEnabl
     } catch (error) {
       console.error('Error fetching game settings:', error);
     }
-  };
+  }, [gameId]);
 
-  const fetchScores = async () => {
+  const fetchScores = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/games/${gameId}/scores`);
@@ -93,19 +77,19 @@ export default function ScoreHistory({ gameId, players, onScoreUpdate, chipEnabl
     } finally {
       setLoading(false);
     }
-  };
+  }, [gameId]);
 
   useEffect(() => {
     fetchGameSettings();
     fetchScores();
-  }, [gameId]);
+  }, [gameId, fetchGameSettings, fetchScores]);
 
   // スコアが更新されたときに履歴を更新
   useEffect(() => {
     if (onScoreUpdate) {
       fetchScores();
     }
-  }, [onScoreUpdate]);
+  }, [onScoreUpdate, fetchScores]);
 
   const handleDelete = async (score: Score) => {
     try {
@@ -230,7 +214,6 @@ export default function ScoreHistory({ gameId, players, onScoreUpdate, chipEnabl
 
     // チップポイントを加算（得点ベース）
     if (chipEnabled) {
-      const chipPointValue = chipPoints || 0;
       totals.east += calculateChipPoints('east') / 1000;
       totals.south += calculateChipPoints('south') / 1000;
       totals.west += calculateChipPoints('west') / 1000;

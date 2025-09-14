@@ -1,4 +1,3 @@
-import { Player } from '@prisma/client';
 
 interface Score {
   round: number;

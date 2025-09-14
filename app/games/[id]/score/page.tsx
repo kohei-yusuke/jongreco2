@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
 import ScoreInput from './components/ScoreInput';
 import ScoreHistory from './components/ScoreHistory';
 import ScoreGraph from './components/ScoreGraph';
@@ -60,19 +59,8 @@ interface Score {
   north: number;
 }
 
-interface ScoreData {
-  scores: Score[];
-  players: PlayerStats[];
-}
 
-interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export default function ScorePage({ params }: PageProps) {
-  const resolvedParams = use(params);
+export default function ScorePage() {
   const router = useRouter();
   const pathname = usePathname();
   const gameId = pathname.split('/')[2]; // /games/[id]/... から id を取得
@@ -80,9 +68,6 @@ export default function ScorePage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentRound, setCurrentRound] = useState(1);
-  const [scoreData, setScoreData] = useState<ScoreData | null>(null);
-  const [scoreUpdateTrigger, setScoreUpdateTrigger] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -108,62 +93,10 @@ export default function ScorePage({ params }: PageProps) {
   }, [gameId]);
 
   const handleScoreChange = useCallback((scores: Record<string, number>) => {
-    if (!game) return;
+    // スコア変更の処理（現在は何もしない）
+    console.log('Score changed:', scores);
+  }, []);
 
-    // スコアデータを更新
-    const updatedScores = {
-      id: Date.now().toString(), // 一時的なID
-      round: currentRound,
-      east: scores[game.players.find(p => p.position === 'east')?.id || ''] || 0,
-      south: scores[game.players.find(p => p.position === 'south')?.id || ''] || 0,
-      west: scores[game.players.find(p => p.position === 'west')?.id || ''] || 0,
-      north: scores[game.players.find(p => p.position === 'north')?.id || ''] || 0,
-    };
-
-    setScoreData(prev => prev ? {
-      ...prev,
-      scores: [...prev.scores, updatedScores],
-    } : {
-      scores: [updatedScores],
-      players: [],
-    });
-  }, [game, currentRound]);
-
-  const handleScoreSubmit = async () => {
-    if (!game) return;
-
-    try {
-      const response = await fetch(`/api/games/${game.id}/scores`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          scores: scoreData?.scores,
-          round: currentRound,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('スコアの登録に失敗しました');
-      }
-
-      // スコアデータを再取得
-      const scoresResponse = await fetch(`/api/games/${game.id}/scores`);
-      if (scoresResponse.ok) {
-        const updatedScoreData = await scoresResponse.json();
-        setScoreData(updatedScoreData);
-        setCurrentRound(prev => prev + 1);
-        // スコア履歴の更新をトリガー
-        setScoreUpdateTrigger(prev => prev + 1);
-      } else {
-        throw new Error('スコアデータの取得に失敗しました');
-      }
-    } catch (error) {
-      console.error('スコア登録エラー:', error);
-      alert('スコアの登録に失敗しました。もう一度お試しください。');
-    }
-  };
 
   const handleSaveAndReturn = async () => {
     if (!game) return;
@@ -219,17 +152,6 @@ export default function ScorePage({ params }: PageProps) {
     }
   };
 
-  // gameSettingsの形式を変換
-  const convertedGameSettings = game ? {
-    initialPoints: game.settings.initialPoints,
-    returnPoints: game.settings.returnPoints,
-    uma1: game.settings.uma.first,
-    uma2: game.settings.uma.second,
-    uma3: game.settings.uma.third,
-    uma4: game.settings.uma.fourth,
-    yakitoriPoints: game.settings.yakitori,
-    yakitoriEnabled: game.settings.yakitoriEnabled,
-  } : null;
 
   if (loading) {
     return (
@@ -317,8 +239,7 @@ export default function ScorePage({ params }: PageProps) {
             <div className="card-body">
               <ScoreHistory
                 gameId={game.id}
-                players={game.players}
-                onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
+                onScoreUpdate={() => {}}
               />
             </div>
           </div>
@@ -334,13 +255,13 @@ export default function ScorePage({ params }: PageProps) {
                 <div className="col-12 col-lg-6">
                   <ScoreGraph
                     gameId={game.id}
-                    onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
+                    onScoreUpdate={() => {}}
                   />
                 </div>
                 <div className="col-12 col-lg-6">
                   <TotalScoreGraph
                     gameId={game.id}
-                    onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
+                    onScoreUpdate={() => {}}
                   />
                 </div>
               </div>

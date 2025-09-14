@@ -16,7 +16,7 @@ export default function Header({ gameId }: HeaderProps) {
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/';
   const isAuthenticated = !!session?.user;
-  const { isSaving, handleSaveAndNavigate } = useGameNavigation({ gameId: gameId || '' });
+  const { handleSaveAndNavigate } = useGameNavigation({ gameId: gameId || '' });
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' });

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import * as bootstrap from 'bootstrap';
 
 interface ScoreInputProps {
@@ -40,7 +39,6 @@ interface PlayerScore {
 }
 
 export default function ScoreInput({ gameId, players, onScoreChange, gameSettings }: ScoreInputProps) {
-  const router = useRouter();
   const [scores, setScores] = useState<Record<string, string>>({});
   const [yakitori, setYakitori] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,16 +132,16 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     };
 
     calculateScores();
-  }, [scores, yakitori, players, gameSettings]);
+  }, [scores, yakitori, players, gameSettings, getRank, getUma]);
 
-  const getRank = (score: number) => {
+  const getRank = useCallback((score: number) => {
     const sortedScores = Object.values(scores)
       .map(s => (parseInt(s) || 0) * 100) // 入力値を100倍して比較
       .sort((a, b) => b - a);
     return sortedScores.indexOf(score) + 1;
-  };
+  }, [scores]);
 
-  const getUma = (rank: number) => {
+  const getUma = useCallback((rank: number) => {
     switch (rank) {
       case 1: return gameSettings.uma.first;
       case 2: return gameSettings.uma.second;
@@ -151,7 +149,7 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
       case 4: return gameSettings.uma.fourth;
       default: return 0;
     }
-  };
+  }, [gameSettings.uma]);
 
   const handleScoreChange = useCallback((playerId: string, value: string) => {
     // 数値以外の入力を無視
@@ -189,7 +187,7 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     if (isSubmitting) return;
 
     // 入力値のバリデーション（数値チェックのみ）
-    const invalidScores = Object.entries(scores).filter(([_, score]) => {
+    const invalidScores = Object.entries(scores).filter(([, score]) => {
       if (score === '') return false;
       const numScore = parseInt(score);
       return isNaN(numScore);
