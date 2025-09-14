@@ -28,22 +28,55 @@ interface Player {
 
 interface ScoreHistoryProps {
   gameId: string;
+  players: {
+    id: string;
+    name: string;
+    position: 'east' | 'south' | 'west' | 'north';
+    user?: {
+      name: string;
+    };
+  }[];
   onScoreUpdate?: () => void;
   chipEnabled?: boolean;
   chipPoints?: number;
 }
 
-export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipPoints }: ScoreHistoryProps) {
+export default function ScoreHistory({ gameId, players, onScoreUpdate, chipEnabled, chipPoints }: ScoreHistoryProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmScore, setDeleteConfirmScore] = useState<Score | null>(null);
+  const [gameSettings, setGameSettings] = useState<{
+    uma: {
+      first: number;
+      second: number;
+      third: number;
+      fourth: number;
+    };
+    yakitori: number;
+  } | null>(null);
   const [chipInputs, setChipInputs] = useState<Record<string, { value: string; isPositive: boolean }>>({
     east: { value: '', isPositive: true },
     south: { value: '', isPositive: true },
     west: { value: '', isPositive: true },
     north: { value: '', isPositive: true }
   });
+
+  const fetchGameSettings = async () => {
+    try {
+      const response = await fetch(`/api/games/${gameId}`);
+      if (!response.ok) {
+        throw new Error('ゲーム設定の取得に失敗しました');
+      }
+      const data = await response.json();
+      setGameSettings({
+        uma: data.settings.uma,
+        yakitori: data.settings.yakitori
+      });
+    } catch (error) {
+      console.error('Error fetching game settings:', error);
+    }
+  };
 
   const fetchScores = async () => {
     try {
@@ -63,6 +96,7 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
   };
 
   useEffect(() => {
+    fetchGameSettings();
     fetchScores();
   }, [gameId]);
 
@@ -121,6 +155,40 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
     return input.isPositive ? points : -points;
   };
 
+  // 得点計算関数（焼き鳥分配対応）
+  const calculateScore = (points: number, yakitori: boolean = false, allYakitori: { east: boolean; south: boolean; west: boolean; north: boolean } = { east: false, south: false, west: false, north: false }): string => {
+    if (!gameSettings) return '0';
+    
+    // 焼き鳥の分配計算
+    const yakitoriPlayers = Object.values(allYakitori).filter(Boolean).length;
+    const nonYakitoriPlayers = 4 - yakitoriPlayers;
+    const yakitoriPenalty = gameSettings.yakitori;
+    const yakitoriDistribution = yakitoriPlayers > 0 ? yakitoriPenalty / nonYakitoriPlayers : 0;
+    
+    let yakitoriAdjustment = 0;
+    if (yakitori) {
+      // 焼き鳥プレイヤーはペナルティ
+      yakitoriAdjustment = -yakitoriPenalty;
+    } else if (yakitoriPlayers > 0) {
+      // 焼き鳥でないプレイヤーは分配を受ける
+      yakitoriAdjustment = yakitoriDistribution;
+    }
+    
+    return ((points + yakitoriAdjustment) / 1000).toFixed(1);
+  };
+
+  // ウマ取得関数
+  const getUma = (rank: number) => {
+    if (!gameSettings) return 0;
+    switch (rank) {
+      case 1: return gameSettings.uma.first;
+      case 2: return gameSettings.uma.second;
+      case 3: return gameSettings.uma.third;
+      case 4: return gameSettings.uma.fourth;
+      default: return 0;
+    }
+  };
+
   // 総得点の計算を修正
   const calculateTotalScores = () => {
     const totals = {
@@ -130,20 +198,43 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
       north: 0
     };
 
-    // 各プレイヤーの総得点を計算
+    // 各プレイヤーの総得点を計算（得点ベース）
     scores.forEach(score => {
-      totals.east += score.east;
-      totals.south += score.south;
-      totals.west += score.west;
-      totals.north += score.north;
+      // 各局の得点を計算（焼き鳥分配対応）
+      const allYakitori = score.yakitori || { east: false, south: false, west: false, north: false };
+      const eastScore = parseFloat(calculateScore(score.east, allYakitori.east, allYakitori));
+      const southScore = parseFloat(calculateScore(score.south, allYakitori.south, allYakitori));
+      const westScore = parseFloat(calculateScore(score.west, allYakitori.west, allYakitori));
+      const northScore = parseFloat(calculateScore(score.north, allYakitori.north, allYakitori));
+
+      // 順位を計算
+      const roundScores = [
+        { position: 'east', score: eastScore },
+        { position: 'south', score: southScore },
+        { position: 'west', score: westScore },
+        { position: 'north', score: northScore }
+      ].sort((a, b) => b.score - a.score);
+
+      // ウマを加算
+      roundScores.forEach((player, index) => {
+        const rank = index + 1;
+        const uma = getUma(rank);
+        const finalScore = player.score + uma;
+        
+        if (player.position === 'east') totals.east += finalScore;
+        if (player.position === 'south') totals.south += finalScore;
+        if (player.position === 'west') totals.west += finalScore;
+        if (player.position === 'north') totals.north += finalScore;
+      });
     });
 
-    // チップポイントを加算
+    // チップポイントを加算（得点ベース）
     if (chipEnabled) {
-      totals.east += calculateChipPoints('east');
-      totals.south += calculateChipPoints('south');
-      totals.west += calculateChipPoints('west');
-      totals.north += calculateChipPoints('north');
+      const chipPointValue = chipPoints || 0;
+      totals.east += calculateChipPoints('east') / 1000;
+      totals.south += calculateChipPoints('south') / 1000;
+      totals.west += calculateChipPoints('west') / 1000;
+      totals.north += calculateChipPoints('north') / 1000;
     }
 
     // 順位付け
@@ -208,47 +299,72 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
               </tr>
             </thead>
             <tbody>
-              {scores.map((score) => (
-                <tr key={score.id}>
-                  <td className="text-center">{score.round}</td>
-                  <td className={`text-end ${score.east > 0 ? 'text-success' : score.east < 0 ? 'text-danger' : ''}`}>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="d-none d-sm-inline">{score.east.toLocaleString()}</span>
-                      <span className="d-inline d-sm-none">{score.east.toLocaleString()}</span>
-                      {score.yakitori?.east && <span className="ms-1">🐔</span>}
-                    </div>
-                  </td>
-                  <td className={`text-end ${score.south > 0 ? 'text-success' : score.south < 0 ? 'text-danger' : ''}`}>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="d-none d-sm-inline">{score.south.toLocaleString()}</span>
-                      <span className="d-inline d-sm-none">{score.south.toLocaleString()}</span>
-                      {score.yakitori?.south && <span className="ms-1">🐔</span>}
-                    </div>
-                  </td>
-                  <td className={`text-end ${score.west > 0 ? 'text-success' : score.west < 0 ? 'text-danger' : ''}`}>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="d-none d-sm-inline">{score.west.toLocaleString()}</span>
-                      <span className="d-inline d-sm-none">{score.west.toLocaleString()}</span>
-                      {score.yakitori?.west && <span className="ms-1">🐔</span>}
-                    </div>
-                  </td>
-                  <td className={`text-end ${score.north > 0 ? 'text-success' : score.north < 0 ? 'text-danger' : ''}`}>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="d-none d-sm-inline">{score.north.toLocaleString()}</span>
-                      <span className="d-inline d-sm-none">{score.north.toLocaleString()}</span>
-                      {score.yakitori?.north && <span className="ms-1">🐔</span>}
-                    </div>
-                  </td>
-                  <td className="text-center">
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => setDeleteConfirmScore(score)}
-                    >
-                      削除
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {scores.map((score) => {
+                // 各局の得点を計算（焼き鳥分配対応）
+                const allYakitori = score.yakitori || { east: false, south: false, west: false, north: false };
+                const eastScore = parseFloat(calculateScore(score.east, allYakitori.east, allYakitori));
+                const southScore = parseFloat(calculateScore(score.south, allYakitori.south, allYakitori));
+                const westScore = parseFloat(calculateScore(score.west, allYakitori.west, allYakitori));
+                const northScore = parseFloat(calculateScore(score.north, allYakitori.north, allYakitori));
+
+                // 順位を計算
+                const roundScores = [
+                  { position: 'east', score: eastScore },
+                  { position: 'south', score: southScore },
+                  { position: 'west', score: westScore },
+                  { position: 'north', score: northScore }
+                ].sort((a, b) => b.score - a.score);
+
+                // ウマを加算した最終得点を計算
+                const finalScores = {
+                  east: eastScore + getUma(roundScores.find(p => p.position === 'east')?.score === eastScore ? roundScores.findIndex(p => p.position === 'east') + 1 : 0),
+                  south: southScore + getUma(roundScores.find(p => p.position === 'south')?.score === southScore ? roundScores.findIndex(p => p.position === 'south') + 1 : 0),
+                  west: westScore + getUma(roundScores.find(p => p.position === 'west')?.score === westScore ? roundScores.findIndex(p => p.position === 'west') + 1 : 0),
+                  north: northScore + getUma(roundScores.find(p => p.position === 'north')?.score === northScore ? roundScores.findIndex(p => p.position === 'north') + 1 : 0)
+                };
+
+                return (
+                  <tr key={score.id}>
+                    <td className="text-center">{score.round}</td>
+                    <td className={`text-end ${finalScores.east > 0 ? 'text-success' : finalScores.east < 0 ? 'text-danger' : ''}`}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="d-none d-sm-inline">{finalScores.east > 0 ? '+' : ''}{finalScores.east.toFixed(1)}</span>
+                        <span className="d-inline d-sm-none">{finalScores.east > 0 ? '+' : ''}{finalScores.east.toFixed(1)}</span>
+                        {score.yakitori?.east && <span className="ms-1">🐔</span>}
+                      </div>
+                    </td>
+                    <td className={`text-end ${finalScores.south > 0 ? 'text-success' : finalScores.south < 0 ? 'text-danger' : ''}`}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="d-none d-sm-inline">{finalScores.south > 0 ? '+' : ''}{finalScores.south.toFixed(1)}</span>
+                        <span className="d-inline d-sm-none">{finalScores.south > 0 ? '+' : ''}{finalScores.south.toFixed(1)}</span>
+                        {score.yakitori?.south && <span className="ms-1">🐔</span>}
+                      </div>
+                    </td>
+                    <td className={`text-end ${finalScores.west > 0 ? 'text-success' : finalScores.west < 0 ? 'text-danger' : ''}`}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="d-none d-sm-inline">{finalScores.west > 0 ? '+' : ''}{finalScores.west.toFixed(1)}</span>
+                        <span className="d-inline d-sm-none">{finalScores.west > 0 ? '+' : ''}{finalScores.west.toFixed(1)}</span>
+                        {score.yakitori?.west && <span className="ms-1">🐔</span>}
+                      </div>
+                    </td>
+                    <td className={`text-end ${finalScores.north > 0 ? 'text-success' : finalScores.north < 0 ? 'text-danger' : ''}`}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="d-none d-sm-inline">{finalScores.north > 0 ? '+' : ''}{finalScores.north.toFixed(1)}</span>
+                        <span className="d-inline d-sm-none">{finalScores.north > 0 ? '+' : ''}{finalScores.north.toFixed(1)}</span>
+                        {score.yakitori?.north && <span className="ms-1">🐔</span>}
+                      </div>
+                    </td>
+                    <td className="text-center">
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => setDeleteConfirmScore(score)}
+                      >
+                        削除
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {chipEnabled && (
                 <tr className="table-light">
                   <td className="text-center">チップ</td>
@@ -279,16 +395,16 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
               <tr className="table-secondary">
                 <td className="text-center">総得点</td>
                 <td className={`text-end ${totals.east > 0 ? 'text-success' : totals.east < 0 ? 'text-danger' : ''}`}>
-                  {totals.east.toLocaleString()}
+                  {totals.east > 0 ? '+' : ''}{totals.east.toFixed(1)}
                 </td>
                 <td className={`text-end ${totals.south > 0 ? 'text-success' : totals.south < 0 ? 'text-danger' : ''}`}>
-                  {totals.south.toLocaleString()}
+                  {totals.south > 0 ? '+' : ''}{totals.south.toFixed(1)}
                 </td>
                 <td className={`text-end ${totals.west > 0 ? 'text-success' : totals.west < 0 ? 'text-danger' : ''}`}>
-                  {totals.west.toLocaleString()}
+                  {totals.west > 0 ? '+' : ''}{totals.west.toFixed(1)}
                 </td>
                 <td className={`text-end ${totals.north > 0 ? 'text-success' : totals.north < 0 ? 'text-danger' : ''}`}>
-                  {totals.north.toLocaleString()}
+                  {totals.north > 0 ? '+' : ''}{totals.north.toFixed(1)}
                 </td>
                 <td></td>
               </tr>

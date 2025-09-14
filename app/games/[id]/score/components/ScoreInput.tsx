@@ -87,12 +87,30 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
   // スコアの計算
   useEffect(() => {
     const calculateScores = () => {
+      // 焼き鳥の分配計算
+      const yakitoriPlayers = players.filter(player => yakitori[player.id]);
+      const nonYakitoriPlayers = players.filter(player => !yakitori[player.id]);
+      const yakitoriPenalty = gameSettings.yakitori;
+      const yakitoriDistribution = yakitoriPlayers.length > 0 ? yakitoriPenalty / nonYakitoriPlayers.length : 0;
+
       const playerScores: PlayerScore[] = players.map(player => {
-        const rawScore = parseInt(scores[player.id]) || 0;
-        const yakitoriPoints = yakitori[player.id] ? -gameSettings.yakitori * 3 : 0;
+        const inputScore = parseInt(scores[player.id]) || 0;
+        const rawScore = inputScore * 100; // 入力値を100倍して実際の点数に変換
+        
+        // 焼き鳥の処理
+        let yakitoriAdjustment = 0;
+        if (yakitori[player.id]) {
+          // 焼き鳥プレイヤーはペナルティ
+          yakitoriAdjustment = -yakitoriPenalty;
+        } else if (yakitoriPlayers.length > 0) {
+          // 焼き鳥でないプレイヤーは分配を受ける
+          yakitoriAdjustment = yakitoriDistribution;
+        }
+
         const rank = getRank(rawScore);
         const uma = getUma(rank);
-        const totalScore = Number((rawScore / 10 + uma + yakitoriPoints).toFixed(1));
+        // 得点 = 点数/1000 + ウマ + 焼き鳥調整
+        const totalScore = Number(((rawScore + yakitoriAdjustment) / 1000 + uma).toFixed(1));
 
         return {
           id: player.id,
@@ -106,7 +124,7 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
         };
       });
 
-      // 合計点でソートして順位を付ける
+      // 合計得点でソートして順位を付ける
       const sortedScores = [...playerScores].sort((a, b) => b.totalScore - a.totalScore);
       sortedScores.forEach((score, index) => {
         score.rank = index + 1;
@@ -120,7 +138,7 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
 
   const getRank = (score: number) => {
     const sortedScores = Object.values(scores)
-      .map(s => parseInt(s) || 0)
+      .map(s => (parseInt(s) || 0) * 100) // 入力値を100倍して比較
       .sort((a, b) => b - a);
     return sortedScores.indexOf(score) + 1;
   };
@@ -141,10 +159,9 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
       return;
     }
 
-    // 末尾の00を除去して保存
-    const cleanValue = value.replace(/00$/, '');
+    // 入力値をそのまま保存（UI表示用）
     setScores(prev => {
-      const newScores = { ...prev, [playerId]: cleanValue };
+      const newScores = { ...prev, [playerId]: value };
       return newScores;
     });
   }, []);
@@ -154,7 +171,8 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     const timer = setTimeout(() => {
       const numericScores: Record<string, number> = {};
       Object.entries(scores).forEach(([id, score]) => {
-        numericScores[id] = score === '' ? 0 : parseInt(score, 10);
+        const inputScore = score === '' ? 0 : parseInt(score, 10);
+        numericScores[id] = inputScore * 100; // 入力値を100倍して通知
       });
       onScoreChange(numericScores);
     }, 1500); // 1.5秒のデバウンス
@@ -170,15 +188,15 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     e.preventDefault();
     if (isSubmitting) return;
 
-    // 入力値のバリデーション
+    // 入力値のバリデーション（数値チェックのみ）
     const invalidScores = Object.entries(scores).filter(([_, score]) => {
       if (score === '') return false;
       const numScore = parseInt(score);
-      return isNaN(numScore) || numScore % 100 !== 0;
+      return isNaN(numScore);
     });
 
     if (invalidScores.length > 0) {
-      alert('点数は100の倍数で入力してください');
+      alert('有効な数値を入力してください');
       return;
     }
 
@@ -186,7 +204,8 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     try {
       const numericScores: Record<string, number> = {};
       Object.entries(scores).forEach(([id, score]) => {
-        numericScores[id] = score === '' ? 0 : parseInt(score);
+        const inputScore = score === '' ? 0 : parseInt(score);
+        numericScores[id] = inputScore * 100; // 入力値を100倍して送信
       });
 
       // プレイヤーの位置に基づいてスコアを変換
@@ -235,7 +254,7 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
       // 局数を更新
       setCurrentRound(prev => prev + 1);
 
-      // 親コンポーネントに通知
+      // 親コンポーネントに通知（100倍した値を送信）
       onScoreChange(numericScores);
     } catch (error) {
       console.error('Error saving scores:', error);
@@ -389,23 +408,23 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
               <thead>
                 <tr>
                   <th style={{ width: '60px', fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>項目</th>
-                  {calculatedScores.map(score => (
-                    <th key={score.id} style={{ width: '25%', fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>
+                  {players.map(player => (
+                    <th key={player.id} style={{ width: '25%', fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>
                       <div className="d-flex flex-column align-items-center">
                         <span 
                           className="text-truncate" 
                           style={{ maxWidth: '100%' }}
-                          title={score.name}
+                          title={player.name}
                           data-bs-toggle="tooltip"
                           data-bs-placement="top"
                         >
-                          {score.name}
+                          {player.name}
                         </span>
                         <small className="text-muted" style={{ fontSize: 'clamp(0.6rem, 1.8vw, 0.7rem)' }}>
-                          {score.position === 'east' && '東家'}
-                          {score.position === 'south' && '南家'}
-                          {score.position === 'west' && '西家'}
-                          {score.position === 'north' && '北家'}
+                          {player.position === 'east' && '東家'}
+                          {player.position === 'south' && '南家'}
+                          {player.position === 'west' && '西家'}
+                          {player.position === 'north' && '北家'}
                         </small>
                       </div>
                     </th>
@@ -415,43 +434,70 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
               <tbody>
                 <tr>
                   <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>点数</td>
-                  {calculatedScores.map(score => (
-                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
-                      {score.rawScore.toLocaleString()}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>ウマ</td>
-                  {calculatedScores.map(score => (
-                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
-                      {score.uma > 0 ? '+' : ''}{score.uma.toLocaleString()}
-                    </td>
-                  ))}
+                  {players.map(player => {
+                    const score = calculatedScores.find(s => s.id === player.id);
+                    return (
+                      <td key={player.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                        {score ? score.rawScore.toLocaleString() + '点' : '0点'}
+                      </td>
+                    );
+                  })}
                 </tr>
                 <tr>
                   <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>焼き鳥</td>
-                  {calculatedScores.map(score => (
-                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
-                      {score.yakitori ? `-${gameSettings.yakitori.toLocaleString()}` : '0'}
-                    </td>
-                  ))}
+                  {players.map(player => {
+                    // 焼き鳥の分配計算
+                    const yakitoriPlayers = players.filter(p => yakitori[p.id]);
+                    const nonYakitoriPlayers = players.filter(p => !yakitori[p.id]);
+                    const yakitoriPenalty = gameSettings.yakitori;
+                    const yakitoriDistribution = yakitoriPlayers.length > 0 ? yakitoriPenalty / nonYakitoriPlayers.length : 0;
+                    
+                    let yakitoriDisplay = '0点';
+                    if (yakitori[player.id]) {
+                      yakitoriDisplay = `-${yakitoriPenalty.toLocaleString()}点`;
+                    } else if (yakitoriPlayers.length > 0) {
+                      yakitoriDisplay = `+${yakitoriDistribution.toLocaleString()}点`;
+                    }
+                    
+                    return (
+                      <td key={player.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                        {yakitoriDisplay}
+                      </td>
+                    );
+                  })}
                 </tr>
                 <tr>
-                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>合計</td>
-                  {calculatedScores.map(score => (
-                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
-                      {score.totalScore > 0 ? '+' : ''}{score.totalScore.toLocaleString()}
-                    </td>
-                  ))}
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>ウマ</td>
+                  {players.map(player => {
+                    const score = calculatedScores.find(s => s.id === player.id);
+                    return (
+                      <td key={player.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                        {score ? (score.uma > 0 ? '+' : '') + score.uma.toLocaleString() : '0'}
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>得点</td>
+                  {players.map(player => {
+                    const score = calculatedScores.find(s => s.id === player.id);
+                    return (
+                      <td key={player.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                        {score ? (score.totalScore > 0 ? '+' : '') + score.totalScore.toFixed(1) : '0.0'}
+                      </td>
+                    );
+                  })}
                 </tr>
                 <tr>
                   <td style={{ fontSize: 'clamp(0.7rem, 2vw, 0.8rem)' }}>順位</td>
-                  {calculatedScores.map(score => (
-                    <td key={score.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
-                      {score.rank}位
-                    </td>
-                  ))}
+                  {players.map(player => {
+                    const score = calculatedScores.find(s => s.id === player.id);
+                    return (
+                      <td key={player.id} style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>
+                        {score ? score.rank + '位' : '-'}
+                      </td>
+                    );
+                  })}
                 </tr>
               </tbody>
             </table>

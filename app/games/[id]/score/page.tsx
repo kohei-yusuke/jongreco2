@@ -306,8 +306,6 @@ export default function ScorePage({ params }: PageProps) {
             players={game.players}
             onScoreChange={handleScoreChange}
             gameSettings={game.settings}
-            onScoreSubmit={handleScoreSubmit}
-            currentRound={currentRound}
           />
         </div>
 
@@ -320,7 +318,7 @@ export default function ScorePage({ params }: PageProps) {
               <ScoreHistory
                 gameId={game.id}
                 players={game.players}
-                updateTrigger={scoreUpdateTrigger}
+                onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
               />
             </div>
           </div>
@@ -336,15 +334,13 @@ export default function ScorePage({ params }: PageProps) {
                 <div className="col-12 col-lg-6">
                   <ScoreGraph
                     gameId={game.id}
-                    players={game.players}
-                    updateTrigger={scoreUpdateTrigger}
+                    onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
                   />
                 </div>
                 <div className="col-12 col-lg-6">
                   <TotalScoreGraph
                     gameId={game.id}
-                    players={game.players}
-                    updateTrigger={scoreUpdateTrigger}
+                    onScoreUpdate={() => setScoreUpdateTrigger(prev => prev + 1)}
                   />
                 </div>
               </div>

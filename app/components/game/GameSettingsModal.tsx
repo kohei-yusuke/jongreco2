@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   initialPoints: 25000,
   returnPoints: 30000,
   chipPoints: 0,
-  yakitoriPoints: 2000,
+  yakitoriPoints: 6000,
   uma1: 20,
   uma2: 10,
   uma3: -10,
@@ -42,6 +42,18 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
   };
 
   const handleChange = (field: keyof GameSettings, value: number | boolean | 'distribution' | 'winner_takes_all') => {
+    // 焼き鳥のバリデーション
+    if (field === 'yakitoriPoints' && typeof value === 'number') {
+      if (value % 100 !== 0) {
+        alert('焼き鳥の点数は100の倍数で入力してください');
+        return;
+      }
+      if (value % 3 !== 0) {
+        alert('焼き鳥の点数は3で割り切れる値で入力してください（分配のため）');
+        return;
+      }
+    }
+    
     setSettings(prev => ({
       ...prev,
       [field]: value

@@ -128,7 +128,7 @@ export default function GameStartModal({ isOpen, onClose, onStart }: GameStartMo
     initialPoints: 25000,
     returnPoints: 30000,
     chipPoints: 0,
-    yakitoriPoints: 2000,
+    yakitoriPoints: 6000,
     uma1: 20,
     uma2: 10,
     uma3: -10,
