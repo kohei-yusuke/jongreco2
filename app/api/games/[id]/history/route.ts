@@ -95,37 +95,11 @@ export async function POST(
 
     // 各プレイヤーの総得点と順位を計算
     const playerScores = game.players.map((player) => {
-      // 基本点の計算
-      const position = player.position.toLowerCase() as 'east' | 'south' | 'west' | 'north';
-      const baseScore = game.scores.reduce((sum: number, score) => {
-        return sum + score[position];
+      const totalScore = game.scores.reduce((sum: number, score) => {
+        const position = player.position.toLowerCase();
+        const scoreValue = score[position];
+        return sum + (typeof scoreValue === 'number' ? scoreValue : 0);
       }, 0);
-
-      // 焼き鳥の計算
-      let yakitoriPoints = 0;
-      if (game.yakitoriEnabled && game.yakitoriPoints) {
-        const hasYakitori = game.scores.some(score => {
-          const yakitori = score as unknown as { yakitori?: { [key: string]: boolean } };
-          return yakitori.yakitori && yakitori.yakitori[position];
-        });
-        
-        if (hasYakitori) {
-          yakitoriPoints = -game.yakitoriPoints * 1000;
-        } else {
-          const yakitoriCount = game.scores.reduce((count, score) => {
-            const yakitori = score as unknown as { yakitori?: { [key: string]: boolean } };
-            if (!yakitori.yakitori) return count;
-            return count + Object.values(yakitori.yakitori).filter(Boolean).length;
-          }, 0);
-          
-          if (yakitoriCount > 0) {
-            const distributionPerPlayer = (game.yakitoriPoints * 1000 * yakitoriCount) / (4 - yakitoriCount);
-            yakitoriPoints = distributionPerPlayer;
-          }
-        }
-      }
-
-      const totalScore = baseScore + yakitoriPoints;
 
       return {
         playerId: player.id,
@@ -139,15 +113,6 @@ export async function POST(
     const sortedScores = [...playerScores].sort((a, b) => b.totalScore - a.totalScore);
     sortedScores.forEach((score, index) => {
       score.rank = index + 1;
-      // ウマの計算と追加
-      let uma = 0;
-      switch (score.rank) {
-        case 1: uma = game.uma1 * 1000; break;
-        case 2: uma = game.uma2 * 1000; break;
-        case 3: uma = game.uma3 * 1000; break;
-        case 4: uma = game.uma4 * 1000; break;
-      }
-      score.totalScore += uma;
     });
 
     // 対局履歴を作成または更新

@@ -19,19 +19,6 @@ interface GameHistory {
     totalScore: number;
     rank: number;
   }[];
-  game: {
-    settings: {
-      uma: {
-        first: number;
-        second: number;
-        third: number;
-        fourth: number;
-      };
-      yakitori: number;
-      yakitoriEnabled: boolean;
-    };
-    yakitoriPlayers: string[];
-  };
   createdAt: string;
   updatedAt: string;
 }
@@ -240,16 +227,8 @@ export default function GameHistoryList() {
                   </td>
                   <td>
                     {history.players.map((player) => (
-                      <div key={player.player.id} className={`font-bold ${
-                        player.rank === 1 ? 'text-red-600' :
-                        player.rank === 2 ? 'text-blue-600' :
-                        player.rank === 3 ? 'text-green-600' :
-                        'text-gray-600'
-                      }`}>
-                        {(calculateFinalScore(player, history) / 1000).toFixed(1)}
-                        {history.game.yakitoriPlayers?.includes(player.player.id) && (
-                          <span className="ml-2 text-yellow-500" title="焼き鳥">🍗</span>
-                        )}
+                      <div key={player.player.id}>
+                        {player.totalScore.toLocaleString()}点
                       </div>
                     ))}
                   </td>
