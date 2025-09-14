@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/auth.config';
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     // 既存のフレンドリクエストをチェック
-    const existingRequest = await prisma.FriendRequest.findUnique({
+    const existingRequest = await prisma.friendRequest.findUnique({
       where: {
         fromId_toId: {
           fromId: session.user.id,
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     // 既存のフレンド関係をチェック
-    const existingFriend = await prisma.Friend.findFirst({
+    const existingFriend = await prisma.friend.findFirst({
       where: {
         OR: [
           { userId: session.user.id, friendId: toId },
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     // フレンドリクエストを作成
-    const result = await prisma.FriendRequest.create({
+    const result = await prisma.friendRequest.create({
       data: {
         fromId: session.user.id,
         toId: toId,

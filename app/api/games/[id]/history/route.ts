@@ -1,15 +1,73 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { Player, Score, Game, GameHistory, GameHistoryPlayer } from '@prisma/client';
+interface Player {
+  id: string;
+  gameId: string;
+  userId: string | null;
+  name: string;
+  position: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Score {
+  id: string;
+  gameId: string;
+  round: number;
+  east: number;
+  south: number;
+  west: number;
+  north: number;
+  createdAt: Date;
+  updatedAt: Date;
+  roundId: string | null;
+}
+
+interface Game {
+  id: string;
+  name: string | null;
+  initialPoints: number;
+  returnPoints: number;
+  chipPoints: number;
+  yakitoriPoints: number;
+  yakitoriMode: string;
+  uma1: number;
+  uma2: number;
+  uma3: number;
+  uma4: number;
+  chipEnabled: boolean;
+  yakitoriEnabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  status: "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+}
 
 interface GameWithRelations extends Game {
   players: Player[];
   scores: Score[];
 }
 
-interface GameHistoryWithPlayers extends GameHistory {
-  players: GameHistoryPlayer[];
+interface GameHistoryPlayer {
+  id: string;
+  gameHistoryId: string;
+  playerId: string;
+  name: string;
+  totalScore: number;
+  rank: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
+
+interface GameHistory {
+  id: string;
+  gameId: string;
+  status: string;
+  players: GameHistoryPlayer[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type GameHistoryWithPlayers = GameHistory;
 
 export async function POST(
   request: Request,
@@ -36,9 +94,9 @@ export async function POST(
     }
 
     // 各プレイヤーの総得点と順位を計算
-    const playerScores = game.players.map((player: Player) => {
-      const totalScore = game.scores.reduce((sum: number, score: Score) => {
-        const position = player.position.toLowerCase() as keyof Score;
+    const playerScores = game.players.map((player) => {
+      const totalScore = game.scores.reduce((sum: number, score) => {
+        const position = player.position.toLowerCase();
         const scoreValue = score[position];
         return sum + (typeof scoreValue === 'number' ? scoreValue : 0);
       }, 0);

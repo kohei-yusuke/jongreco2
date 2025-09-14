@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/auth.config';
 
 export async function GET() {
   try {
@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
     // 自分のフレンド一覧を取得
-    const friends = await prisma.Friend.findMany({
+    const friends = await prisma.friend.findMany({
       where: { userId: session.user.id },
       include: {
         friend: { select: { id: true, name: true, email: true } },

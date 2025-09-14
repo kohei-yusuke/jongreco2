@@ -1,20 +1,61 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/auth.config';
 import prisma from '@/lib/prisma';
-import { Game, Player, Score } from '@prisma/client';
-
-interface PlayerWithUser extends Player {
-  user: {
-    name: string | null;
-    image: string | null;
-    iconPath: string | null;
-  } | null;
+interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  iconPath: string | null;
 }
 
-// yakitoriModeを明示的に含める
-interface GameWithRelations extends Omit<Game, 'yakitoriMode'> {
+interface Player {
+  id: string;
+  gameId: string;
+  userId: string | null;
+  name: string;
+  position: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Score {
+  id: string;
+  gameId: string;
+  round: number;
+  east: number;
+  south: number;
+  west: number;
+  north: number;
+  createdAt: Date;
+  updatedAt: Date;
+  roundId: string | null;
+}
+
+interface PlayerWithUser extends Player {
+  user: User | null;
+}
+
+interface Game {
+  id: string;
+  name: string | null;
+  initialPoints: number;
+  returnPoints: number;
+  chipPoints: number;
+  yakitoriPoints: number;
   yakitoriMode: string;
+  uma1: number;
+  uma2: number;
+  uma3: number;
+  uma4: number;
+  chipEnabled: boolean;
+  yakitoriEnabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  status: "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+}
+
+interface GameWithRelations extends Game {
   players: PlayerWithUser[];
   scores: Score[];
 }

@@ -46,6 +46,23 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
 
+  const getRank = useCallback((score: number) => {
+    const sortedScores = Object.values(scores)
+      .map(s => (parseInt(s) || 0) * 100) // 入力値を100倍して比較
+      .sort((a, b) => b - a);
+    return sortedScores.indexOf(score) + 1;
+  }, [scores]);
+
+  const getUma = useCallback((rank: number) => {
+    switch (rank) {
+      case 1: return gameSettings.uma.first;
+      case 2: return gameSettings.uma.second;
+      case 3: return gameSettings.uma.third;
+      case 4: return gameSettings.uma.fourth;
+      default: return 0;
+    }
+  }, [gameSettings.uma]);
+
   // デバッグ用：プレイヤー情報の確認
   useEffect(() => {
     console.log('Players:', players);
@@ -133,23 +150,6 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
 
     calculateScores();
   }, [scores, yakitori, players, gameSettings, getRank, getUma]);
-
-  const getRank = useCallback((score: number) => {
-    const sortedScores = Object.values(scores)
-      .map(s => (parseInt(s) || 0) * 100) // 入力値を100倍して比較
-      .sort((a, b) => b - a);
-    return sortedScores.indexOf(score) + 1;
-  }, [scores]);
-
-  const getUma = useCallback((rank: number) => {
-    switch (rank) {
-      case 1: return gameSettings.uma.first;
-      case 2: return gameSettings.uma.second;
-      case 3: return gameSettings.uma.third;
-      case 4: return gameSettings.uma.fourth;
-      default: return 0;
-    }
-  }, [gameSettings.uma]);
 
   const handleScoreChange = useCallback((playerId: string, value: string) => {
     // 数値以外の入力を無視

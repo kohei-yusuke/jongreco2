@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/auth.config';
 
 export async function GET() {
   try {
@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     // 自分宛・自分発のリクエストを取得
-    const requests = await prisma.FriendRequest.findMany({
+    const requests = await prisma.friendRequest.findMany({
       where: {
         OR: [
           { fromId: session.user.id },
