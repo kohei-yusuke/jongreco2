@@ -99,18 +99,18 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     setYakitori(initialYakitori);
   }, [players]);
 
-  // スコアの計算
-  const calculateScores = useCallback(() => {
+  // スコア計算の共通関数
+  const calculateAndUpdateScores = useCallback((currentScores: Record<string, string>, currentYakitori: Record<string, boolean>) => {
     // プレイヤーの素点を計算
     const playerScores: PlayerScore[] = players.map(player => {
-      const inputScore = parseInt(scores[player.id]) || 0;
+      const inputScore = parseInt(currentScores[player.id]) || 0;
       const rawScore = inputScore * 100; // 入力値を100倍して実際の点数に変換
       return {
         id: player.id,
         name: player.name,
         position: player.position,
         rawScore,
-        yakitori: yakitori[player.id],
+        yakitori: currentYakitori[player.id],
         uma: 0,
         totalScore: 0,
         rank: 0
@@ -156,38 +156,36 @@ export default function ScoreInput({ gameId, players, onScoreChange, gameSetting
     });
 
     setCalculatedScores(playerScores);
-  }, [scores, yakitori, players, gameSettings]);
+  }, [players, gameSettings]);
 
+  // スコア入力ハンドラ
   const handleScoreChange = useCallback((playerId: string, value: string) => {
     // 数値以外の入力を無視
     if (value !== '' && !/^-?\d*$/.test(value)) {
       return;
     }
 
-    // 入力値をそのまま保存（UI表示用）
+    // 入力値を保存して即時計算
     setScores(prev => {
       const newScores = { ...prev, [playerId]: value };
+      calculateAndUpdateScores(newScores, yakitori);
       return newScores;
     });
-  }, []);
+  }, [yakitori, calculateAndUpdateScores]);
 
-  // スコアの変更を親コンポーネントに通知（デバウンス処理を追加）
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const numericScores: Record<string, number> = {};
-      Object.entries(scores).forEach(([id, score]) => {
-        const inputScore = score === '' ? 0 : parseInt(score, 10);
-        numericScores[id] = inputScore * 100; // 入力値を100倍して通知
-      });
-      onScoreChange(numericScores);
-    }, 1500); // 1.5秒のデバウンス
-
-    return () => clearTimeout(timer);
-  }, [scores, onScoreChange]);
-
+  // 焼き鳥変更ハンドラ
   const handleYakitoriChange = useCallback((playerId: string, checked: boolean) => {
-    setYakitori(prev => ({ ...prev, [playerId]: checked }));
-  }, []);
+    setYakitori(prev => {
+      const newYakitori = { ...prev, [playerId]: checked };
+      calculateAndUpdateScores(scores, newYakitori);
+      return newYakitori;
+    });
+  }, [scores, calculateAndUpdateScores]);
+
+  // 初期計算
+  useEffect(() => {
+    calculateAndUpdateScores(scores, yakitori);
+  }, [scores, yakitori, calculateAndUpdateScores]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
