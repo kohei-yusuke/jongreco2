@@ -19,14 +19,22 @@ export const authOptions: AuthOptions = {
 
           const user = await prisma.user.findUnique({
             where: { email: credentials.email },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              iconPath: true,
+              password: true,
+              salt: true,
+              createdAt: true,
+            },
           });
 
-          if (!user) {
+          if (!user || !user.salt) {
             throw new Error('メールアドレスまたはパスワードが正しくありません');
           }
 
           const isPasswordValid = await compare(credentials.password, user.password);
-
           if (!isPasswordValid) {
             throw new Error('メールアドレスまたはパスワードが正しくありません');
           }
