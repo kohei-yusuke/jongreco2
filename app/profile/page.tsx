@@ -48,6 +48,8 @@ export default function ProfilePage() {
   const [isChangingNickname, setIsChangingNickname] = useState(false);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [showNicknameForm, setShowNicknameForm] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const [iconError, setIconError] = useState<string | null>(null);

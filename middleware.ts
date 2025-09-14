@@ -11,6 +11,7 @@ const publicPaths = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/reset-password',
+  '/api/auth/[...nextauth]',  // NextAuth.jsのルートを追加
 ];
 
 export async function middleware(request: NextRequest) {
