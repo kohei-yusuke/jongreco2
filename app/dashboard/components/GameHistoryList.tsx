@@ -9,8 +9,9 @@ import { ja } from 'date-fns/locale';
 interface GameHistoryPlayer {
   id: string;
   name: string;
-  totalScore: number;
+  totalScore: number;  // 素点
   rank: number;
+  finalScore?: number;  // 得点（ウマ、焼き鳥を含む）
 }
 
 interface GameHistory {
@@ -20,7 +21,42 @@ interface GameHistory {
   players: GameHistoryPlayer[];
   createdAt: string;
   updatedAt: string;
+  settings?: {
+    initialPoints: number;
+    ratePoints: number;
+    uma: number[];
+    returnPoints: number;
+  };
 }
+
+// 素点から得点に変換する関数
+const calculateFinalScore = (
+  player: GameHistoryPlayer,
+  players: GameHistoryPlayer[],
+  settings: GameHistory['settings']
+) => {
+  if (!settings) return (player.totalScore - 30000) / 1000;
+
+  // 基本点の計算（素点 - 初期点数）/ レート
+  let finalScore = (player.totalScore - settings.initialPoints) / settings.ratePoints;
+
+  // ウマの計算
+  if (settings.uma && settings.uma.length === 4) {
+    finalScore += settings.uma[player.rank - 1];
+  }
+
+  // 焼き鳥の計算（最下位のみ）
+  if (player.rank === 4 && settings.returnPoints) {
+    const hasYakitori = players.some(p => 
+      p.rank !== 4 && p.totalScore < settings.initialPoints
+    );
+    if (!hasYakitori) {
+      finalScore -= settings.returnPoints;
+    }
+  }
+
+  return Math.round(finalScore * 10) / 10;  // 小数点第1位まで表示
+};
 
 export default function GameHistoryList() {
   const [histories, setHistories] = useState<GameHistory[]>([]);
@@ -176,7 +212,12 @@ export default function GameHistoryList() {
                   </td>
                   <td>
                     {history.players.map((player) => (
-                      <div key={player.id}>{player.totalScore.toLocaleString()}点</div>
+                      <div key={player.id}>
+                        <div>{player.totalScore.toLocaleString()}点</div>
+                        <div className="text-sm text-gray-600">
+                          {calculateFinalScore(player, history.players, history.settings)}点
+                        </div>
+                      </div>
                     ))}
                   </td>
                   <td>
@@ -201,4 +242,4 @@ export default function GameHistoryList() {
       />
     </>
   );
-} 
+}

@@ -16,6 +16,11 @@ export default function QRCodeModal({ isOpen, onClose }: QRCodeModalProps) {
   useEffect(() => {
     if (isOpen) {
       fetchQRCode();
+    } else {
+      // モーダルが閉じられたときにステートをリセット
+      setQrCode(null);
+      setError(null);
+      setLoading(false);
     }
   }, [isOpen]);
 
@@ -37,8 +42,15 @@ export default function QRCodeModal({ isOpen, onClose }: QRCodeModalProps) {
     }
   };
 
+  const handleClose = () => {
+    setQrCode(null);
+    setError(null);
+    setLoading(false);
+    onClose();
+  };
+
   return (
-    <Modal show={isOpen} onHide={onClose} centered>
+    <Modal show={isOpen} onHide={handleClose} centered backdrop="static">
       <Modal.Header closeButton>
         <Modal.Title>フレンド追加用QRコード</Modal.Title>
       </Modal.Header>

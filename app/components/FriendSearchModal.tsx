@@ -25,7 +25,7 @@ export default function FriendSearchModal({ isOpen, onClose }: FriendSearchModal
     setSearchResult(null);
 
     try {
-      const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}&type=${searchType}`);
+      const response = await fetch(`/api/users/search?query=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
 
       if (!response.ok) {

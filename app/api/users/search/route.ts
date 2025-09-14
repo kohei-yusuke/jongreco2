@@ -18,18 +18,21 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
+    const query = searchParams.get('query');
 
-    if (!email) {
+    if (!query) {
       return NextResponse.json(
-        { error: 'メールアドレスが必要です' },
+        { error: 'メールアドレスまたはIDを入力してください' },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: {
-        email: email
+        OR: [
+          { email: query },
+          { id: query }
+        ]
       },
       select: {
         id: true,

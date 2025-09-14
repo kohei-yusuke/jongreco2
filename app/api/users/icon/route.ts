@@ -17,9 +17,9 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData();
-    const file = formData.get('icon') as File;
+    const file = formData.get('icon');
     
-    if (!file) {
+    if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: 'アイコンファイルが必要です' }, { status: 400 });
     }
 
@@ -32,6 +32,12 @@ export async function POST(request: Request) {
     if (file.size > 2 * 1024 * 1024) {
       return NextResponse.json({ error: 'ファイルサイズは2MB以下にしてください' }, { status: 400 });
     }
+
+    console.log('File details:', {
+      name: file.name,
+      type: file.type,
+      size: file.size
+    });
 
     // ファイル名を生成（ユーザーID + 拡張子）
     const fileExtension = file.name.split('.').pop();
