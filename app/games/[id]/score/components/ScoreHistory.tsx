@@ -38,6 +38,7 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
       fourth: number;
     };
     yakitori: number;
+    returnPoints: number;
   } | null>(null);
   const [chipInputs, setChipInputs] = useState<Record<string, { value: string; isPositive: boolean }>>({
     east: { value: '', isPositive: true },
@@ -54,8 +55,14 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
       }
       const data = await response.json();
       setGameSettings({
-        uma: data.settings.uma,
-        yakitori: data.settings.yakitori
+        uma: {
+          first: data.uma1 || 10,
+          second: data.uma2 || 5,
+          third: data.uma3 || -5,
+          fourth: data.uma4 || -10
+        },
+        yakitori: data.yakitoriPoints || 6000,
+        returnPoints: data.returnPoints || 30000
       });
     } catch (error) {
       console.error('Error fetching game settings:', error);
@@ -139,15 +146,21 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
     return input.isPositive ? points : -points;
   };
 
-  // 得点計算関数（焼き鳥分配対応）
-  const calculateScore = (points: number, yakitori: boolean = false, allYakitori: { east: boolean; south: boolean; west: boolean; north: boolean } = { east: false, south: false, west: false, north: false }): string => {
+  // 得点計算関数（返し点・焼き鳥分配対応）
+  const calculateScore = (points: number, rank: number, yakitori: boolean = false, allYakitori: { east: boolean; south: boolean; west: boolean; north: boolean } = { east: false, south: false, west: false, north: false }): string => {
     if (!gameSettings) return '0';
     
+    // 返し点の適用（2位以下の場合）
+    let adjustedPoints = points;
+    if (rank > 1) {
+      adjustedPoints = points - gameSettings.returnPoints;
+    }
+
     // 焼き鳥の分配計算
     const yakitoriPlayers = Object.values(allYakitori).filter(Boolean).length;
     const nonYakitoriPlayers = 4 - yakitoriPlayers;
     const yakitoriPenalty = gameSettings.yakitori;
-    const yakitoriDistribution = yakitoriPlayers > 0 ? yakitoriPenalty / nonYakitoriPlayers : 0;
+    const yakitoriDistribution = yakitoriPlayers > 0 ? (yakitoriPenalty * yakitoriPlayers) / nonYakitoriPlayers : 0;
     
     let yakitoriAdjustment = 0;
     if (yakitori) {
@@ -157,8 +170,19 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
       // 焼き鳥でないプレイヤーは分配を受ける
       yakitoriAdjustment = yakitoriDistribution;
     }
+
+    // ウマの計算
+    let uma = 0;
+    switch (rank) {
+      case 1: uma = gameSettings.uma.first; break;
+      case 2: uma = gameSettings.uma.second; break;
+      case 3: uma = gameSettings.uma.third; break;
+      case 4: uma = gameSettings.uma.fourth; break;
+    }
     
-    return ((points + yakitoriAdjustment) / 1000).toFixed(1);
+    // 点数計算：(素点 - 返し点 + 焼き鳥調整) ÷ 1000 + ウマ
+    const baseScore = (adjustedPoints + yakitoriAdjustment) / 1000;
+    return (baseScore + uma).toFixed(1);
   };
 
   // ウマ取得関数
@@ -184,12 +208,25 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
 
     // 各プレイヤーの総得点を計算（得点ベース）
     scores.forEach(score => {
-      // 各局の得点を計算（焼き鳥分配対応）
+      // まず順位を計算
+      const positions = [
+        { position: 'east', score: score.east },
+        { position: 'south', score: score.south },
+        { position: 'west', score: score.west },
+        { position: 'north', score: score.north }
+      ].sort((a, b) => b.score - a.score);
+
+      // 順位マップを作成
+      const rankMap = Object.fromEntries(
+        positions.map((item, index) => [item.position, index + 1])
+      );
+
+      // 各局の得点を計算（返し点・焼き鳥分配対応）
       const allYakitori = score.yakitori || { east: false, south: false, west: false, north: false };
-      const eastScore = parseFloat(calculateScore(score.east, allYakitori.east, allYakitori));
-      const southScore = parseFloat(calculateScore(score.south, allYakitori.south, allYakitori));
-      const westScore = parseFloat(calculateScore(score.west, allYakitori.west, allYakitori));
-      const northScore = parseFloat(calculateScore(score.north, allYakitori.north, allYakitori));
+      const eastScore = parseFloat(calculateScore(score.east, rankMap['east'], allYakitori.east, allYakitori));
+      const southScore = parseFloat(calculateScore(score.south, rankMap['south'], allYakitori.south, allYakitori));
+      const westScore = parseFloat(calculateScore(score.west, rankMap['west'], allYakitori.west, allYakitori));
+      const northScore = parseFloat(calculateScore(score.north, rankMap['north'], allYakitori.north, allYakitori));
 
       // 順位を計算
       const roundScores = [
@@ -285,10 +322,24 @@ export default function ScoreHistory({ gameId, onScoreUpdate, chipEnabled, chipP
               {scores.map((score) => {
                 // 各局の得点を計算（焼き鳥分配対応）
                 const allYakitori = score.yakitori || { east: false, south: false, west: false, north: false };
-                const eastScore = parseFloat(calculateScore(score.east, allYakitori.east, allYakitori));
-                const southScore = parseFloat(calculateScore(score.south, allYakitori.south, allYakitori));
-                const westScore = parseFloat(calculateScore(score.west, allYakitori.west, allYakitori));
-                const northScore = parseFloat(calculateScore(score.north, allYakitori.north, allYakitori));
+                // まず順位を計算
+                const positions = [
+                  { position: 'east', score: score.east },
+                  { position: 'south', score: score.south },
+                  { position: 'west', score: score.west },
+                  { position: 'north', score: score.north }
+                ].sort((a, b) => b.score - a.score);
+
+                // 順位マップを作成
+                const rankMap = Object.fromEntries(
+                  positions.map((item, index) => [item.position, index + 1])
+                );
+
+                // 得点を計算
+                const eastScore = parseFloat(calculateScore(score.east, rankMap['east'], allYakitori.east, allYakitori));
+                const southScore = parseFloat(calculateScore(score.south, rankMap['south'], allYakitori.south, allYakitori));
+                const westScore = parseFloat(calculateScore(score.west, rankMap['west'], allYakitori.west, allYakitori));
+                const northScore = parseFloat(calculateScore(score.north, rankMap['north'], allYakitori.north, allYakitori));
 
                 // 順位を計算
                 const roundScores = [
