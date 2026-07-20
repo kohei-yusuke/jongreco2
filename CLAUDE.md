@@ -94,7 +94,24 @@ DB 接続（DATABASE_URL）が無いと API は動かないが、`lib/score.ts` 
 - コンポーネントは必ず **CSS変数（--jr-*）経由**で色を参照する（色の直書き禁止＝ダークで破綻する）。
 - 切替は `ThemeToggle` が `data-theme` と `data-bs-theme`（Bootstrap 5.3）を同時に設定。初期化は layout.tsx のインラインscript（FOUC防止）。
 
-## 8. 既知の残課題（未修正／要確認）
+## 8b. ウマ・オカの自由設定
+- **ウマ**: `ScoreSettings.uma`（順位1..4の千点単位配列）。合計0でゼロサム。
+  - ゲスト計算ツール `/calc` … プリセット（5-10/10-20/なし）＋順位ごとの自由入力＋合計0チェック。
+  - ログイン対局 … `GameSettingsModal` の uma1..4 で自由入力。
+- **オカ**: 既定は自動計算 `(返し点 - 配給原点) × 4 / 1000`。
+  - `ScoreSettings.okaOverride`（千点単位）を指定すると**手動オカ**として優先（`calcOka` 実装）。
+  - `/calc` は「自動 / 手動」を切替可能。ログイン対局は返し点・配給原点で調整（DBに oka 列は未追加）。
+
+## 9. リンク / 公開URL
+| 種別 | URL | 補足 |
+|------|-----|------|
+| デザインプレビュー(Artifact) | https://claude.ai/code/artifact/22ab2afc-c913-42d5-af4b-d9f508ff120e | スコア画面の新デザイン確認用の静的プレビュー |
+| 本番デプロイ | （未デプロイ） | Vercel等へのデプロイは未実施。デプロイ後にここへ追記すること |
+| GitHub | git@github.com:kohei-yusuke/jongreco2.git | 作業ブランチ: `fix/scoring-logic-and-design` |
+
+> ⚠️ アプリ本体の一般公開URLはまだありません。上記 Artifact は「見た目の確認用プレビュー」で、実データ・ログインは動作しません。
+
+## 10. 既知の残課題（未修正／要確認）
 - **middleware.ts のガードが実質無効**: `publicPaths` に `'/'` があり `pathname.startsWith('/')` が全パスにマッチするため、未ログインでも通過する（ページ側/API側の session チェックで実質保護）。ゲスト計算ツールにはむしろ好都合だが、厳密化するなら完全一致判定へ要修正（`token` cookie 名が NextAuth と不一致な点も注意、ロックアウト回避）。
 - `src/app/` に create-next-app の残骸（`app/` と二重）。
 - 認証まわりのメール送信・リセットは未検証。

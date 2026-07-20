@@ -105,6 +105,27 @@ export default function CalcPage() {
 
   const seatName = (s: Seat) => names[s]?.trim() || SEAT_LABEL[s];
 
+  // ウマ・オカの自由設定用
+  const umaTotal = settings.uma.reduce((a, b) => a + b, 0);
+  const autoOka = round1(((settings.returnPoints - settings.initialPoints) * 4) / 1000);
+  const okaManual = settings.okaOverride !== undefined;
+  const effectiveOka = okaManual ? settings.okaOverride! : autoOka;
+
+  const setUma = (i: number, v: number) =>
+    setSettings((s) => {
+      const u = [...s.uma] as [number, number, number, number];
+      u[i] = v;
+      return { ...s, uma: u };
+    });
+
+  const setOkaManual = (manual: boolean) =>
+    setSettings((s) => {
+      if (manual) return { ...s, okaOverride: autoOka };
+      const next = { ...s };
+      delete next.okaOverride;
+      return next;
+    });
+
   const handleInput = (s: Seat, v: string) => {
     if (v !== '' && !/^-?\d*$/.test(v)) return;
     setInputs((prev) => ({ ...prev, [s]: v }));
@@ -158,7 +179,7 @@ export default function CalcPage() {
                   onChange={(e) => setSettings((s) => ({ ...s, returnPoints: parseInt(e.target.value) || 0 }))} />
               </div>
               <div className="col-12 col-md-6">
-                <label className="jr-label">ウマ</label>
+                <label className="jr-label">ウマ（プリセット）</label>
                 <div className="d-flex gap-2 flex-wrap">
                   {UMA_PRESETS.map((p) => {
                     const active = p.uma.every((v, i) => v === settings.uma[i]);
@@ -173,6 +194,62 @@ export default function CalcPage() {
                   })}
                 </div>
               </div>
+
+              <div className="col-12">
+                <label className="jr-label">ウマ（自由設定・順位ごと）</label>
+                <div className="row g-2">
+                  {(['1位', '2位', '3位', '4位'] as const).map((lbl, i) => (
+                    <div className="col-3" key={lbl}>
+                      <div className="text-center small mb-1" style={{ color: 'var(--jr-ink-muted)' }}>{lbl}</div>
+                      <input
+                        className="jr-input text-center"
+                        type="number"
+                        value={settings.uma[i]}
+                        onChange={(e) => setUma(i, parseInt(e.target.value) || 0)}
+                        aria-label={`${lbl}のウマ`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className={`small mt-1 ${umaTotal === 0 ? '' : 'val-neg'}`} style={{ color: umaTotal === 0 ? 'var(--jr-ink-muted)' : undefined }}>
+                  {umaTotal === 0 ? '合計0（ゼロサム）✓' : `⚠ ウマ合計が ${umaTotal > 0 ? '+' : ''}${umaTotal}（0にすると合計得点がゼロサムになります）`}
+                </div>
+              </div>
+
+              <div className="col-12">
+                <label className="jr-label">オカ（1位への加点）</label>
+                <div className="d-flex gap-2 flex-wrap align-items-center">
+                  <button type="button"
+                    className={`jr-btn ${!okaManual ? 'jr-btn-primary' : 'jr-btn-ghost'}`}
+                    style={{ minHeight: 40, padding: '.4rem .9rem' }}
+                    onClick={() => setOkaManual(false)}>
+                    自動（返し点−配給原点）
+                  </button>
+                  <button type="button"
+                    className={`jr-btn ${okaManual ? 'jr-btn-primary' : 'jr-btn-ghost'}`}
+                    style={{ minHeight: 40, padding: '.4rem .9rem' }}
+                    onClick={() => setOkaManual(true)}>
+                    手動で指定
+                  </button>
+                  {okaManual ? (
+                    <span className="d-inline-flex align-items-center gap-2">
+                      <input
+                        className="jr-input text-end"
+                        style={{ width: 120, minHeight: 40, display: 'inline-block' }}
+                        type="number"
+                        step={1000}
+                        value={Math.round(effectiveOka * 1000)}
+                        onChange={(e) => setSettings((s) => ({ ...s, okaOverride: (parseInt(e.target.value) || 0) / 1000 }))}
+                        aria-label="オカ（点）"
+                      />
+                      <span className="text-muted small">点</span>
+                    </span>
+                  ) : (
+                    <span className="jr-chip jr-chip-muted">= {effectiveOka > 0 ? '+' : ''}{effectiveOka}（{Math.round(effectiveOka * 1000).toLocaleString()}点）</span>
+                  )}
+                </div>
+              </div>
+
               <div className="col-12">
                 <label className="yk-toggle" style={{ marginRight: 8 }}>
                   <input type="checkbox" checked={settings.yakitoriEnabled}

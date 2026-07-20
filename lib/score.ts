@@ -43,6 +43,11 @@ export interface ScoreSettings {
   yakitoriMode: YakitoriMode;
   /** チップ1枚の価値（素点単位） */
   chipPoints: number;
+  /**
+   * オカ（千点単位、1位への加点）を手動指定する場合の値。
+   * 未指定なら (返し点 - 配給原点) × 4 / 1000 で自動計算。
+   */
+  okaOverride?: number;
 }
 
 export interface SeatResult {
@@ -148,8 +153,9 @@ export function rankSeats(scores: SeatRecord<number>): SeatRecord<number> {
 // オカ
 // ---------------------------------------------------------------------------
 
-/** オカ（千点単位）。1位が総取りする。 */
+/** オカ（千点単位）。1位が総取りする。手動指定があればそれを優先。 */
 export function calcOka(settings: ScoreSettings): number {
+  if (settings.okaOverride !== undefined) return settings.okaOverride;
   return ((settings.returnPoints - settings.initialPoints) * 4) / 1000;
 }
 

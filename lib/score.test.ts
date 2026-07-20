@@ -90,6 +90,13 @@ describe('calcOka（オカ）', () => {
   it('返し=原点ならオカ0', () => {
     expect(calcOka({ ...base, returnPoints: 25000 })).toBe(0);
   });
+  it('okaOverride 指定時はそれを優先（自動計算を無視）', () => {
+    // 返し点からの自動計算なら20だが、手動30を優先
+    expect(calcOka({ ...base, okaOverride: 30 })).toBe(30);
+  });
+  it('okaOverride=0 も有効（オカ無しルール）', () => {
+    expect(calcOka({ ...base, okaOverride: 0 })).toBe(0);
+  });
 });
 
 describe('calcYakitoriAdjustments（焼き鳥）', () => {
@@ -203,6 +210,14 @@ describe('calcRoundResult（1半荘の精算）', () => {
     expect(round1(total)).toBe(0);
     // 4位(north)は焼き鳥ペナルティ分さらにマイナス: -30.0 + (-6.0) = -36.0
     expect(res.north.final).toBeCloseTo(-36.0, 5);
+  });
+
+  it('okaOverride を精算に反映（1位の final に手動オカが乗る）', () => {
+    const raw = { east: 40000, south: 30000, west: 20000, north: 10000 };
+    const res = calcRoundResult(raw, emptyYakitori(), { ...base, okaOverride: 30 });
+    // 1位: (40000-30000)/1000 +10 +30(手動オカ) = 50.0
+    expect(res.east.final).toBeCloseTo(50.0, 5);
+    expect(res.east.oka).toBe(30);
   });
 
   it('SeatResult の中身が整合（uma/oka/yakitoriAdj/rawPoints）', () => {
