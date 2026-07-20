@@ -81,7 +81,7 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
                     width: '20px',
                     height: '20px',
                     borderRadius: '50%',
-                    backgroundColor: '#e0e0e0',
+                    backgroundColor: '#64748b',
                     color: 'white',
                     fontSize: '12px',
                     fontWeight: 'bold'
@@ -116,7 +116,7 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
                     width: '20px',
                     height: '20px',
                     borderRadius: '50%',
-                    backgroundColor: '#e0e0e0',
+                    backgroundColor: '#64748b',
                     color: 'white',
                     fontSize: '12px',
                     fontWeight: 'bold'
@@ -151,7 +151,7 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
                     width: '20px',
                     height: '20px',
                     borderRadius: '50%',
-                    backgroundColor: '#e0e0e0',
+                    backgroundColor: '#64748b',
                     color: 'white',
                     fontSize: '12px',
                     fontWeight: 'bold'

@@ -53,7 +53,10 @@
 ## 4. ディレクトリ
 ```
 app/
-  games/[id]/score/            スコア入力ページ（本体）
+  page.tsx                     ランディング（ゲスト導線: /calc へ）
+  calc/page.tsx                ★ 登録不要の点数計算ツール（完全クライアント / localStorage / DB不要）
+  components/ThemeToggle.tsx    ライト/ダーク切替（localStorage + no-flashスクリプトは layout.tsx）
+  games/[id]/score/            スコア入力ページ（本体・要ログイン）
     page.tsx
     components/
       ScoreInput.tsx           1半荘の入力＋その場計算
@@ -86,8 +89,13 @@ DB 接続（DATABASE_URL）が無いと API は動かないが、`lib/score.ts` 
 3. `lib/score.ts` を変更したら `npm test` を必ず通す（分岐を1つ増やしたらテストも足す）。
 4. ウマ二重加算・順位の再ソートは過去の重大バグ。final は「1回だけ」加算する。
 
-## 7. 既知の残課題（未修正／要確認）
-- `app/api/games/route.ts` の作成経路が2系統（配列 / オブジェクト）で不整合。`isCurrentUser` は Player に無いカラム。
+## 7. テーマ（ライト/ダーク）
+- トークンは `:root`（ライト）と `:root[data-theme="dark"]` / `@media (prefers-color-scheme: dark)` で定義（globals.css）。
+- コンポーネントは必ず **CSS変数（--jr-*）経由**で色を参照する（色の直書き禁止＝ダークで破綻する）。
+- 切替は `ThemeToggle` が `data-theme` と `data-bs-theme`（Bootstrap 5.3）を同時に設定。初期化は layout.tsx のインラインscript（FOUC防止）。
+
+## 8. 既知の残課題（未修正／要確認）
+- **middleware.ts のガードが実質無効**: `publicPaths` に `'/'` があり `pathname.startsWith('/')` が全パスにマッチするため、未ログインでも通過する（ページ側/API側の session チェックで実質保護）。ゲスト計算ツールにはむしろ好都合だが、厳密化するなら完全一致判定へ要修正（`token` cookie 名が NextAuth と不一致な点も注意、ロックアウト回避）。
 - `src/app/` に create-next-app の残骸（`app/` と二重）。
 - 認証まわりのメール送信・リセットは未検証。
 

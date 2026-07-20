@@ -5,6 +5,7 @@ import { verify } from 'jsonwebtoken';
 // 認証が不要なパス
 const publicPaths = [
   '/',
+  '/calc',            // 登録不要の点数計算ツール
   '/login',
   '/register',
   '/reset-password',
