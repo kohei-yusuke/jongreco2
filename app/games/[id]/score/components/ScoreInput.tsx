@@ -126,58 +126,57 @@ export default function ScoreInput({ gameId, players, onScoreChange, onSaved, ga
     }
   };
 
+  const valClass = (n: number) => (n > 0 ? 'val-pos' : n < 0 ? 'val-neg' : 'val-zero');
+
   return (
-    <form onSubmit={handleSubmit} className="card border-0 shadow-sm">
-      <div className="card-header bg-white d-flex justify-content-between align-items-center py-3">
-        <h5 className="mb-0 fw-semibold">✏️ スコア入力</h5>
-        <span className="badge bg-primary-subtle text-primary-emphasis fs-6">{currentRound} 半荘目</span>
+    <form onSubmit={handleSubmit} className="jr-card">
+      <div className="jr-card-head">
+        <h5 className="jr-card-title">✏️ スコア入力</h5>
+        <span className="jr-chip">{currentRound} 半荘目</span>
       </div>
-      <div className="card-body">
+
+      <div className="jr-card-body">
         <div className="row g-3">
           {SEATS.map((s) => {
             const player = playerBySeat[s];
             const r = result[s];
+            const dataAttr = { [`data-${s}`]: '' } as Record<string, string>;
             return (
               <div key={s} className="col-12 col-sm-6">
-                <div className="border rounded-3 p-3 h-100">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <div className="text-truncate">
-                      <span className="fw-semibold">{player?.name ?? '—'}</span>
-                      <span className="badge bg-light text-dark ms-2">{SEAT_LABEL[s]}</span>
+                <div className="seat-card h-100" {...dataAttr}>
+                  <div className="d-flex justify-content-between align-items-center mb-2" style={{ paddingLeft: 6 }}>
+                    <div className="text-truncate d-flex align-items-center gap-2">
+                      <span className="seat-tag">{SEAT_LABEL[s]}</span>
+                      <span className="seat-name text-truncate">{player?.name ?? '—'}</span>
                     </div>
-                    <span className="small text-muted">{RANK_MEDAL[r.rank - 1]} {r.rank}位</span>
+                    <span className="rank-pill">{RANK_MEDAL[r.rank - 1]}<span className={r.rank === 1 ? 'rank-1' : ''}>{r.rank}位</span></span>
                   </div>
 
-                  <div className="input-group mb-2">
+                  <div className="score-field" style={{ marginLeft: 6 }}>
                     <input
                       type="text"
                       inputMode="numeric"
-                      className="form-control text-end fs-5"
                       value={inputs[s]}
                       onChange={(e) => handleScoreChange(s, e.target.value)}
                       placeholder="0"
                       maxLength={6}
                       aria-label={`${SEAT_LABEL[s]}の点数`}
                     />
-                    <span className="input-group-text">00 点</span>
+                    <span className="suffix">00 点</span>
                   </div>
 
-                  <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex justify-content-between align-items-center mt-2" style={{ paddingLeft: 6 }}>
                     {settings.yakitoriEnabled ? (
-                      <div className="form-check">
+                      <label className={`yk-toggle ${yakitori[s] ? 'on' : ''}`}>
                         <input
                           type="checkbox"
-                          className="form-check-input"
-                          id={`yakitori-${s}`}
                           checked={yakitori[s]}
                           onChange={(e) => handleYakitoriChange(s, e.target.checked)}
                         />
-                        <label className="form-check-label small" htmlFor={`yakitori-${s}`}>🐔 焼き鳥</label>
-                      </div>
+                        🐔 焼き鳥
+                      </label>
                     ) : <span />}
-                    <span className={`fw-bold ${r.final > 0 ? 'text-success' : r.final < 0 ? 'text-danger' : 'text-secondary'}`}>
-                      {formatSigned(r.final)}
-                    </span>
+                    <span className={`val fs-5 ${valClass(r.final)}`}>{formatSigned(r.final)}</span>
                   </div>
                 </div>
               </div>
@@ -186,18 +185,15 @@ export default function ScoreInput({ gameId, players, onScoreChange, onSaved, ga
         </div>
 
         {anyInput && (
-          <div className={`alert ${validation.ok ? 'alert-success' : 'alert-warning'} d-flex justify-content-between align-items-center mt-3 mb-0 py-2`}>
-            <span className="small">
-              素点合計: <strong>{validation.actual.toLocaleString()}</strong> / {expected.toLocaleString()} 点
-            </span>
-            <span className="small">
-              {validation.ok ? '✓ 一致' : `差分 ${validation.diff > 0 ? '+' : ''}${validation.diff.toLocaleString()}`}
-            </span>
+          <div className={`jr-note ${validation.ok ? 'jr-note-ok' : 'jr-note-warn'} mt-3`}>
+            <span>素点合計 <strong className="tnum">{validation.actual.toLocaleString()}</strong> / {expected.toLocaleString()}</span>
+            <span>{validation.ok ? '✓ 一致' : `差分 ${validation.diff > 0 ? '+' : ''}${validation.diff.toLocaleString()}`}</span>
           </div>
         )}
       </div>
-      <div className="card-footer bg-white d-flex justify-content-end py-3">
-        <button type="submit" className="btn btn-primary px-4" disabled={isSubmitting}>
+
+      <div className="submit-bar">
+        <button type="submit" className="jr-btn jr-btn-primary jr-btn-block" disabled={isSubmitting}>
           {isSubmitting ? '保存中…' : 'この半荘を登録'}
         </button>
       </div>

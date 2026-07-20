@@ -30,85 +30,81 @@ export default function Header({ gameId }: HeaderProps) {
     }
   };
 
+  const Brand = () => (
+    <span className="jr-brand">
+      <span className="dot" aria-hidden />
+      JongReco
+    </span>
+  );
+
   if (isAuthPage) {
     return (
-      <header className="bg-black text-white py-3">
-        <div className="container">
-          <h1 className="h4 mb-0">JongReco</h1>
+      <header className="jr-appbar">
+        <div className="page-wrap py-3 d-flex align-items-center" style={{ paddingTop: 0, paddingBottom: 0, minHeight: 56 }}>
+          <Brand />
         </div>
       </header>
     );
   }
 
   return (
-    <header className="bg-black text-white py-3">
-      <div className="container">
-        <div className="d-flex justify-content-between align-items-center">
-          <h1 className="h4 mb-0">JongReco</h1>
-          
+    <header className="jr-appbar">
+      <div className="page-wrap py-2" style={{ paddingTop: 8, paddingBottom: 8 }}>
+        <div className="d-flex justify-content-between align-items-center" style={{ minHeight: 44 }}>
+          <Brand />
+
           {/* デスクトップメニュー */}
-          <div className="d-none d-md-flex align-items-center">
-            <Link href="/dashboard" className="text-white text-decoration-none me-3" onClick={(e) => handleNavigation(e, '/dashboard')}>
+          <nav className="d-none d-md-flex align-items-center gap-3">
+            <Link href="/dashboard" className="jr-navlink" onClick={(e) => handleNavigation(e, '/dashboard')}>
               ダッシュボード
             </Link>
             {isAuthenticated && (
-              <Link href="/profile" className="text-white text-decoration-none me-3">
-                <i className="bi bi-person-circle me-1"></i>
-                プロフィール
+              <Link href="/profile" className="jr-navlink">
+                <i className="bi bi-person-circle me-1"></i>プロフィール
               </Link>
             )}
-            <button
-              onClick={handleLogout}
-              className="btn btn-outline-light btn-sm"
-            >
+            <button onClick={handleLogout} className="jr-btn jr-btn-ghost" style={{ minHeight: 38, padding: '.3rem .9rem', color: '#fff', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)' }}>
               ログアウト
             </button>
-          </div>
+          </nav>
 
           {/* モバイルメニューボタン */}
           <button
-            className="btn btn-outline-light d-md-none"
+            className="d-md-none jr-btn jr-btn-ghost"
+            style={{ minHeight: 40, width: 40, padding: 0, color: '#fff', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)' }}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="メニュー"
           >
-            <i className="bi bi-three-dots-vertical"></i>
+            <i className={`bi ${isMenuOpen ? 'bi-x-lg' : 'bi-list'}`}></i>
           </button>
         </div>
 
         {/* モバイルメニュー */}
         {isMenuOpen && (
-          <div className="d-md-none mt-3">
-            <div className="d-flex flex-column">
+          <div className="d-md-none mt-2 pb-2 d-flex flex-column gap-2">
+            <Link
+              href="/dashboard"
+              className="jr-navlink"
+              onClick={(e) => { handleNavigation(e, '/dashboard'); setIsMenuOpen(false); }}
+            >
+              <i className="bi bi-grid me-2"></i>ダッシュボード
+            </Link>
+            {isAuthenticated && (
               <Link
-                href="/dashboard"
-                className="text-white text-decoration-none mb-2"
-                onClick={(e) => {
-                  handleNavigation(e, '/dashboard');
-                  setIsMenuOpen(false);
-                }}
+                href="/profile"
+                className="jr-navlink"
+                onClick={(e) => { handleNavigation(e, '/profile'); setIsMenuOpen(false); }}
               >
-                ダッシュボード
+                <i className="bi bi-person-circle me-2"></i>プロフィール
               </Link>
-              {isAuthenticated && (
-                <Link
-                  href="/profile"
-                  className="text-white text-decoration-none mb-2"
-                  onClick={(e) => {
-                    handleNavigation(e, '/profile');
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <i className="bi bi-person-circle me-1"></i>
-                  プロフィール
-                </Link>
-              )}
-              <button
-                onClick={handleLogout}
-                className="btn btn-outline-light btn-sm align-self-start"
-              >
-                ログアウト
-              </button>
-            </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="jr-btn jr-btn-ghost align-self-start"
+              style={{ minHeight: 40, padding: '.4rem 1rem', color: '#fff', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)' }}
+            >
+              ログアウト
+            </button>
           </div>
         )}
       </div>

@@ -172,37 +172,23 @@ export default function ScorePage() {
   }
 
   return (
-    <div className="container py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-        <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center mb-3 mb-md-0">
-          <h1 className="mb-2 mb-md-0" style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)' }}>{game.name}</h1>
-          <span className="ms-md-3 text-muted" style={{ fontSize: 'clamp(0.9rem, 3vw, 1.2rem)' }}>
-            対局ID: {game.id}
-          </span>
+    <div className="page-wrap">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+        <div className="min-w-0">
+          <h1 className="mb-1 fw-bold text-truncate" style={{ fontSize: 'clamp(1.4rem, 4vw, 1.9rem)', letterSpacing: '-.02em' }}>
+            {game.name || '対局'}
+          </h1>
+          <span className="jr-chip jr-chip-muted" style={{ fontSize: '.72rem' }}>ID {game.id.slice(0, 8)}…</span>
         </div>
-        <div className="d-flex gap-2">
-          <button
-            className="btn btn-outline-primary"
-            onClick={() => setShowSettingsModal(true)}
-            style={{ minWidth: '80px', fontSize: 'clamp(0.9rem, 3vw, 1rem)' }}
-          >
-            設定
+        <div className="d-flex gap-2 w-100" style={{ flexWrap: 'wrap', maxWidth: 460 }}>
+          <button className="jr-btn jr-btn-ghost flex-fill" style={{ padding: '.55rem 1rem', minHeight: 44 }} onClick={() => setShowSettingsModal(true)}>
+            <i className="bi bi-sliders" /> 設定
           </button>
-          <button
-            className="btn btn-outline-secondary"
-            onClick={handleSaveAndReturn}
-            disabled={isSaving}
-            style={{ minWidth: '120px', fontSize: 'clamp(0.9rem, 3vw, 1rem)' }}
-          >
-            {isSaving ? '保存中...' : '下書き保存'}
+          <button className="jr-btn jr-btn-ghost flex-fill" style={{ padding: '.55rem 1rem', minHeight: 44 }} onClick={handleSaveAndReturn} disabled={isSaving}>
+            {isSaving ? '保存中…' : '下書き保存'}
           </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleCompleteGame}
-            disabled={isSaving}
-            style={{ minWidth: '120px', fontSize: 'clamp(0.9rem, 3vw, 1rem)' }}
-          >
-            {isSaving ? '保存中...' : '対局終了'}
+          <button className="jr-btn jr-btn-primary flex-fill" style={{ padding: '.55rem 1.1rem', minHeight: 44 }} onClick={handleCompleteGame} disabled={isSaving}>
+            {isSaving ? '保存中…' : '対局終了'}
           </button>
         </div>
       </div>
@@ -231,11 +217,11 @@ export default function ScorePage() {
         </div>
 
         <div className="col-12">
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-white py-3">
-              <h5 className="mb-0 fw-semibold">📈 スコア推移</h5>
+          <div className="jr-card">
+            <div className="jr-card-head">
+              <h5 className="jr-card-title">📈 スコア推移</h5>
             </div>
-            <div className="card-body">
+            <div className="jr-card-body">
               <div className="row g-4">
                 <div className="col-12 col-lg-6">
                   {scoreSettings && (
