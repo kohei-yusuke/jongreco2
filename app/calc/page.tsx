@@ -15,9 +15,20 @@ import {
   type SeatRecord,
   type ScoreSettings,
 } from '@/lib/score';
+import Tutorial, { type TourStep } from '@/components/Tutorial';
 
 const STORAGE_KEY = 'jongreco.calc.v1';
+const TOUR_KEY = 'jongreco.calc.tour.v1';
 const RANK_MEDAL = ['🥇', '🥈', '🥉', ''];
+
+const TOUR_STEPS: TourStep[] = [
+  { title: 'ようこそ！30秒で使い方だけ 🀄', body: '登録なしで麻雀の点数精算ができます。まずは流れをサッと見てみましょう。' },
+  { selector: '[data-tour="settings"]', title: '① ルールを決める', body: '返し点・ウマ・オカを自由に設定できます。分からなければ既定のままでOK（後から変更可）。' },
+  { selector: '[data-tour="input"]', title: '② 素点を入力', body: '各家の持ち点を「百点棒」で入力（152 → 15,200点）。合計が配給原点×4になると ✓ が出ます。' },
+  { selector: '[data-tour="add"]', title: '③ 半荘を記録に追加', body: 'ボタンひとつで、ウマ・オカ・焼き鳥まで自動精算して記録します。' },
+  { selector: '[data-tour="record"]', title: '④ 累計と順位を確認', body: '半荘を重ねるほど、下の表に総得点と順位が積み上がります。' },
+  { selector: '[data-tour="register"]', title: '⑤ ずっと残す・共有する', body: '入力はこの端末に自動保存。履歴やグラフ、仲間との共有は無料登録で。' },
+];
 
 const DEFAULT_SETTINGS: ScoreSettings = {
   initialPoints: 25000,
@@ -38,6 +49,9 @@ interface Persisted {
   settings: ScoreSettings;
   names: SeatRecord<string>;
   rounds: Round[];
+  /** 「記録に追加」前の入力途中の1半荘も保存し、更新で消えないようにする */
+  inputs?: SeatRecord<string>;
+  yakitori?: SeatRecord<boolean>;
 }
 
 const emptyStr = (): SeatRecord<string> => ({ east: '', south: '', west: '', north: '' });
@@ -62,6 +76,30 @@ export default function CalcPage() {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  // 初回訪問だけ自動でチュートリアルを表示
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      if (!localStorage.getItem(TOUR_KEY)) setTourOpen(true);
+    } catch {
+      /* ignore */
+    }
+  }, [hydrated]);
+
+  const closeTour = () => {
+    setTourOpen(false);
+    try {
+      localStorage.setItem(TOUR_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  };
+  const startTour = () => {
+    setShowSettings(true); // 設定パネルを開いてからハイライトできるように
+    setTourOpen(true);
+  };
 
   // 復元
   useEffect(() => {
@@ -72,6 +110,8 @@ export default function CalcPage() {
         if (p.settings) setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
         if (p.names) setNames({ ...emptyStr(), ...p.names });
         if (Array.isArray(p.rounds)) setRounds(p.rounds);
+        if (p.inputs) setInputs({ ...emptyStr(), ...p.inputs });
+        if (p.yakitori) setYakitori({ ...emptyBool(), ...p.yakitori });
       }
     } catch {
       /* ignore */
@@ -79,20 +119,21 @@ export default function CalcPage() {
     setHydrated(true);
   }, []);
 
-  // 保存
+  // 保存（入力途中の1半荘も含めて保存 → 更新/再訪でも復元）
   useEffect(() => {
     if (!hydrated) return;
-    const data: Persisted = { settings, names, rounds };
+    const data: Persisted = { settings, names, rounds, inputs, yakitori };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
       /* ignore */
     }
-  }, [settings, names, rounds, hydrated]);
+  }, [settings, names, rounds, inputs, yakitori, hydrated]);
 
+  // 入力は「百点棒」単位（152 → 15,200点）。麻雀の点数は必ず100の倍数。
   const rawScores: SeatRecord<number> = useMemo(() => {
     const raw = {} as SeatRecord<number>;
-    SEATS.forEach((s) => { raw[s] = parseInt(inputs[s]) || 0; });
+    SEATS.forEach((s) => { raw[s] = (parseInt(inputs[s]) || 0) * 100; });
     return raw;
   }, [inputs]);
 
@@ -159,9 +200,14 @@ export default function CalcPage() {
           </h1>
           <span className="jr-chip">登録不要 · すぐ使える</span>
         </div>
-        <button className="jr-btn jr-btn-ghost" style={{ minHeight: 42, padding: '.5rem 1rem' }} onClick={() => setShowSettings((v) => !v)}>
-          <i className="bi bi-sliders" /> ルール設定
-        </button>
+        <div className="d-flex gap-2">
+          <button className="jr-btn jr-btn-ghost" style={{ minHeight: 42, padding: '.5rem 1rem' }} onClick={startTour}>
+            <i className="bi bi-question-circle" /> 使い方
+          </button>
+          <button data-tour="settings" className="jr-btn jr-btn-ghost" style={{ minHeight: 42, padding: '.5rem 1rem' }} onClick={() => setShowSettings((v) => !v)}>
+            <i className="bi bi-sliders" /> ルール設定
+          </button>
+        </div>
       </div>
 
       {showSettings && (
@@ -271,7 +317,7 @@ export default function CalcPage() {
       )}
 
       {/* 入力カード */}
-      <div className="jr-card mb-4">
+      <div className="jr-card mb-4" data-tour="input">
         <div className="jr-card-head">
           <h5 className="jr-card-title">✏️ 素点を入力</h5>
           <span className="jr-chip jr-chip-muted">{rounds.length + 1} 半荘目</span>
@@ -305,10 +351,10 @@ export default function CalcPage() {
                         value={inputs[s]}
                         onChange={(e) => handleInput(s, e.target.value)}
                         placeholder="0"
-                        maxLength={7}
-                        aria-label={`${seatName(s)}の点数`}
+                        maxLength={5}
+                        aria-label={`${seatName(s)}の点数（百点棒・152で15200点）`}
                       />
-                      <span className="suffix">点</span>
+                      <span className="suffix">00 点</span>
                     </div>
                     <div className="d-flex justify-content-between align-items-center mt-2" style={{ paddingLeft: 6 }}>
                       {settings.yakitoriEnabled ? (
@@ -334,14 +380,14 @@ export default function CalcPage() {
           )}
         </div>
         <div className="submit-bar">
-          <button className="jr-btn jr-btn-primary jr-btn-block" onClick={addRound} disabled={!anyInput}>
+          <button data-tour="add" className="jr-btn jr-btn-primary jr-btn-block" onClick={addRound} disabled={!anyInput}>
             <i className="bi bi-plus-lg" /> この半荘を記録に追加
           </button>
         </div>
       </div>
 
       {/* 記録 */}
-      <div className="jr-card">
+      <div className="jr-card" data-tour="record">
         <div className="jr-card-head">
           <h5 className="jr-card-title">📋 記録</h5>
           {rounds.length > 0 && (
@@ -409,7 +455,7 @@ export default function CalcPage() {
       </div>
 
       {/* 登録導線 */}
-      <div className="jr-card mt-4" style={{ background: 'linear-gradient(135deg,#064e3b,#0f172a)', border: 0 }}>
+      <div className="jr-card mt-4" data-tour="register" style={{ background: 'linear-gradient(135deg,#064e3b,#0f172a)', border: 0 }}>
         <div className="jr-card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
           <div style={{ color: '#fff' }}>
             <div className="fw-bold" style={{ fontSize: '1.05rem' }}>記録を残して振り返りたくなったら</div>
@@ -425,6 +471,8 @@ export default function CalcPage() {
       <p className="text-center mt-3 mb-0" style={{ color: 'var(--jr-ink-muted)', fontSize: '.8rem' }}>
         入力内容はこの端末のブラウザだけに保存されます
       </p>
+
+      <Tutorial steps={TOUR_STEPS} open={tourOpen} onClose={closeTour} />
     </div>
   );
 }
