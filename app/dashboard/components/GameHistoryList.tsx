@@ -107,76 +107,64 @@ export default function GameHistoryList() {
   return (
     <>
       {loading ? (
-        <div className="d-flex justify-content-center">
-          <div className="spinner-border" role="status">
+        <div className="d-flex justify-content-center my-4">
+          <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
         </div>
       ) : error ? (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
+        <div className="jr-alert">{error}</div>
       ) : histories.length === 0 ? (
-        <div className="text-center py-5">
-          <h3 className="mb-4">対局を記録して新たな歴史を紡ぎましょう!</h3>
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowGameStartModal(true)}
-          >
-            新規対局作成
+        <div className="empty-state">
+          <div className="emoji">🀄</div>
+          <h3 className="fw-bold mt-2 mb-1" style={{ fontSize: '1.1rem' }}>まだ記録がありません</h3>
+          <p className="mb-3">最初の一戦を記録して、卓の歴史を紡ぎましょう。</p>
+          <button className="jr-btn jr-btn-primary" onClick={() => setShowGameStartModal(true)}>
+            <i className="bi bi-plus-lg" /> 新規対局を作成
           </button>
         </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-hover">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="jr-table">
             <thead>
               <tr>
-                <th>日時</th>
+                <th style={{ textAlign: 'left' }}>日時</th>
                 <th>状態</th>
-                <th>プレイヤー</th>
-                <th>順位</th>
-                <th>得点</th>
-                <th>操作</th>
+                <th style={{ textAlign: 'left' }}>プレイヤー / 得点</th>
+                <th style={{ width: 64 }}></th>
               </tr>
             </thead>
             <tbody>
               {histories.map((history) => (
                 <tr key={history.id}>
-                  <td>
-                    {format(new Date(history.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja })}
+                  <td style={{ textAlign: 'left', color: 'var(--jr-ink-soft)', fontWeight: 600 }}>
+                    {format(new Date(history.createdAt), 'M/d HH:mm', { locale: ja })}
                   </td>
                   <td>
-                    <span className={`badge ${history.status === 'completed' ? 'bg-success' : 'bg-warning'}`}>
-                      {history.status === 'completed' ? '完了' : '一時保存'}
+                    <span className={`status-pill ${history.status === 'completed' ? 'status-done' : 'status-draft'}`}>
+                      {history.status === 'completed' ? '完了' : '下書き'}
                     </span>
                   </td>
-                  <td>
-                    {history.players.map((player) => (
-                      <div key={player.player.id}>{player.player.name}</div>
-                    ))}
+                  <td style={{ textAlign: 'left' }}>
+                    <div className="d-flex flex-column gap-1">
+                      {history.players.map((player) => (
+                        <div key={player.player.id} className="d-flex align-items-center justify-content-between gap-3" style={{ minWidth: 180 }}>
+                          <span className="d-inline-flex align-items-center gap-2 text-truncate">
+                            <span className="rank-pill">{['🥇', '🥈', '🥉', ''][player.rank - 1]}{player.rank}</span>
+                            <span className="text-truncate">{player.player.name}</span>
+                          </span>
+                          <span
+                            className={`val tnum ${player.totalScore > 0 ? 'val-pos' : player.totalScore < 0 ? 'val-neg' : 'val-zero'}`}
+                          >
+                            {formatTotal(player.totalScore)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td>
-                    {history.players.map((player) => (
-                      <div key={player.player.id}>{player.rank}位</div>
-                    ))}
-                  </td>
-                  <td>
-                    {history.players.map((player) => (
-                      <div
-                        key={player.player.id}
-                        className={player.totalScore > 0 ? 'text-success' : player.totalScore < 0 ? 'text-danger' : ''}
-                        style={{ fontVariantNumeric: 'tabular-nums' }}
-                      >
-                        {formatTotal(player.totalScore)}
-                      </div>
-                    ))}
-                  </td>
-                  <td>
-                    <Link
-                      href={`/games/${history.gameId}`}
-                      className="btn btn-sm btn-outline-primary"
-                    >
-                      詳細
+                    <Link href={`/games/${history.gameId}`} className="jr-link" style={{ fontSize: '.85rem' }}>
+                      詳細 ›
                     </Link>
                   </td>
                 </tr>

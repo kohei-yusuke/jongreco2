@@ -83,24 +83,14 @@ export default function ResetPasswordConfirmPage() {
 
   if (!isValidToken) {
     return (
-      <div className="container">
-        <div className="row justify-content-center">
-          <div className="col-md-6 col-lg-4">
-            <div className="card shadow-sm mt-5">
-              <div className="card-body p-4">
-                <h2 className="text-center mb-4">パスワードリセット</h2>
-                {error && (
-                  <div className="alert alert-danger" role="alert">
-                    {error}
-                  </div>
-                )}
-                <div className="text-center mt-3">
-                  <Link href="/login" className="btn btn-primary">
-                    ログインページに戻る
-                  </Link>
-                </div>
-              </div>
-            </div>
+      <div className="auth-wrap">
+        <div className="auth-card jr-card">
+          <div className="jr-card-body text-center">
+            <h2 className="auth-title">パスワードリセット</h2>
+            {error && <div className="jr-alert my-3">{error}</div>}
+            <Link href="/login" className="jr-btn jr-btn-primary jr-btn-block mt-2">
+              ログインに戻る
+            </Link>
           </div>
         </div>
       </div>
@@ -108,60 +98,42 @@ export default function ResetPasswordConfirmPage() {
   }
 
   return (
-    <div className="container">
-      <div className="row justify-content-center">
-        <div className="col-md-6 col-lg-4">
-          <div className="card shadow-sm mt-5">
-            <div className="card-body p-4">
-              <h2 className="text-center mb-4">新しいパスワードの設定</h2>
-              {message && (
-                <div className="alert alert-success" role="alert">
-                  {message}
-                </div>
-              )}
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="password" className="form-label">
-                    新しいパスワード
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <div className="form-text">
-                    8文字以上で入力してください
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="confirmPassword" className="form-label">
-                    新しいパスワード（確認）
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="confirmPassword"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="d-grid gap-2">
-                  <button type="submit" className="btn btn-primary">
-                    パスワードを再設定
-                  </button>
-                </div>
-              </form>
+    <div className="auth-wrap">
+      <div className="auth-card jr-card">
+        <div className="jr-card-body">
+          <h2 className="auth-title">新しいパスワード</h2>
+          <p className="auth-sub mb-4">新しいパスワードを設定してください</p>
+          {message && <div className="jr-alert jr-alert-ok mb-3">{message}</div>}
+          {error && <div className="jr-alert mb-3">{error}</div>}
+          <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+            <div>
+              <label htmlFor="password" className="jr-label">新しいパスワード</label>
+              <input
+                type="password"
+                className="jr-input"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="8文字以上"
+                required
+              />
             </div>
-          </div>
+            <div>
+              <label htmlFor="confirmPassword" className="jr-label">新しいパスワード（確認）</label>
+              <input
+                type="password"
+                className="jr-input"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="もう一度入力"
+                required
+              />
+            </div>
+            <button type="submit" className="jr-btn jr-btn-primary jr-btn-block mt-1">
+              パスワードを再設定
+            </button>
+          </form>
         </div>
       </div>
     </div>
