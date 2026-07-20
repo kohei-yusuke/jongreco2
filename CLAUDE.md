@@ -105,11 +105,12 @@ DB 接続（DATABASE_URL）が無いと API は動かないが、`lib/score.ts` 
 ## 9. リンク / 公開URL
 | 種別 | URL | 補足 |
 |------|-----|------|
+| **本番（Vercel）** | https://jongreco2.vercel.app/ | 外部公開URL。ゲスト計算ツール: https://jongreco2.vercel.app/calc |
 | デザインプレビュー(Artifact) | https://claude.ai/code/artifact/22ab2afc-c913-42d5-af4b-d9f508ff120e | スコア画面の新デザイン確認用の静的プレビュー |
-| 本番デプロイ | （未デプロイ） | Vercel等へのデプロイは未実施。デプロイ後にここへ追記すること |
-| GitHub | git@github.com:kohei-yusuke/jongreco2.git | 作業ブランチ: `fix/scoring-logic-and-design` |
+| GitHub | git@github.com:kohei-yusuke/jongreco2.git | 作業ブランチ: `fix/scoring-logic-and-design`。Vercel が push で自動デプロイ |
 
-> ⚠️ アプリ本体の一般公開URLはまだありません。上記 Artifact は「見た目の確認用プレビュー」で、実データ・ログインは動作しません。
+> 2026-07-20 時点で本番URLは稼働中。新ランディング＋ゲスト計算ツール `/calc` が反映済みを確認（WebFetch）。
+> ウマ/オカの自由設定は `/calc` の「ルール設定」パネル内（既定は折りたたみ）。
 
 ## 10. 既知の残課題（未修正／要確認）
 - **middleware.ts のガードが実質無効**: `publicPaths` に `'/'` があり `pathname.startsWith('/')` が全パスにマッチするため、未ログインでも通過する（ページ側/API側の session チェックで実質保護）。ゲスト計算ツールにはむしろ好都合だが、厳密化するなら完全一致判定へ要修正（`token` cookie 名が NextAuth と不一致な点も注意、ロックアウト回避）。
