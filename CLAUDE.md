@@ -87,9 +87,15 @@ npm run test:e2e       # Playwright E2E（自動で dev サーバ起動、port 3
 DB 接続（DATABASE_URL）が無いと API は動かないが、`lib/score.ts` のテストは**DB不要の純関数**。
 E2E は**DB不要のゲスト面**（`/` と `/calc`・テーマ・チュートリアル）を対象にしているため DB なしで通る。
 
-### テスト構成
-- **単体/結合（Vitest）**: `lib/score.test.ts` … 47件・分岐100%。権威例（25000/30000, ウマ10-20, オカ20）や
-  複数半荘セッション、API設定→精算→保存(×10整数) の結合フローを検証。
+### テスト構成（計 64 Vitest + 12 E2E）
+- **精算ロジック（Vitest）**: `lib/score.test.ts` … 47件・**分岐100%**。権威例（25000/30000, ウマ10-20, オカ20）、
+  五捨六入の境界、複数半荘セッション、API設定→精算→保存(×10整数) の結合フロー。
+- **API結合（Vitest）**: `tests/api/*.test.ts` … 17件。Prisma と next-auth を `vi.mock` し、DB無しで
+  ルートハンドラを直接検証。
+  - `history.test.ts` … 対局確定の精算→保存（totalScore ×10・順位・焼き鳥・404）
+  - `scores.test.ts` … 認証ガード・局番号採番・焼き鳥ネスト保存・整形
+  - `games.test.ts` … 4人/席/重複バリデーション・isCurrentUser除去・yakitoriMode保存
+  - vitest.config は `resolve.alias`（'@'→ルート・**forward slash必須**）と include に `tests/**` を設定。
 - **E2E（Playwright）**: `e2e/*.spec.ts` … desktop / mobile(Pixel 5=Chromium) の2プロジェクト。
   百点棒入力→精算→記録→リロード永続、五捨六入トグル、合計不一致警告、テーマ保存、チュートリアル非強制。
 - Playwright はブラウザに **Chromium のみ** 使用（`npx playwright install chromium`）。
