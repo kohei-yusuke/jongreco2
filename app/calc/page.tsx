@@ -24,7 +24,7 @@ const RANK_MEDAL = ['🥇', '🥈', '🥉', ''];
 const TOUR_STEPS: TourStep[] = [
   { title: 'ようこそ！30秒で使い方だけ 🀄', body: '登録なしで麻雀の点数精算ができます。まずは流れをサッと見てみましょう。' },
   { selector: '[data-tour="settings"]', title: '① ルールを決める', body: '返し点・ウマ・オカを自由に設定できます。分からなければ既定のままでOK（後から変更可）。' },
-  { selector: '[data-tour="input"]', title: '② 素点を入力', body: '各家の最終持ち点を入れるだけ。合計が「配給原点×4」になると ✓ が出ます。' },
+  { selector: '[data-tour="input"]', title: '② 素点を入力', body: '各家の持ち点を「百点棒」で入力（152 → 15,200点）。合計が配給原点×4になると ✓ が出ます。' },
   { selector: '[data-tour="add"]', title: '③ 半荘を記録に追加', body: 'ボタンひとつで、ウマ・オカ・焼き鳥まで自動精算して記録します。' },
   { selector: '[data-tour="record"]', title: '④ 累計と順位を確認', body: '半荘を重ねるほど、下の表に総得点と順位が積み上がります。' },
   { selector: '[data-tour="register"]', title: '⑤ ずっと残す・共有する', body: '入力はこの端末に自動保存。履歴やグラフ、仲間との共有は無料登録で。' },
@@ -130,9 +130,10 @@ export default function CalcPage() {
     }
   }, [settings, names, rounds, inputs, yakitori, hydrated]);
 
+  // 入力は「百点棒」単位（152 → 15,200点）。麻雀の点数は必ず100の倍数。
   const rawScores: SeatRecord<number> = useMemo(() => {
     const raw = {} as SeatRecord<number>;
-    SEATS.forEach((s) => { raw[s] = parseInt(inputs[s]) || 0; });
+    SEATS.forEach((s) => { raw[s] = (parseInt(inputs[s]) || 0) * 100; });
     return raw;
   }, [inputs]);
 
@@ -350,10 +351,10 @@ export default function CalcPage() {
                         value={inputs[s]}
                         onChange={(e) => handleInput(s, e.target.value)}
                         placeholder="0"
-                        maxLength={7}
-                        aria-label={`${seatName(s)}の点数`}
+                        maxLength={5}
+                        aria-label={`${seatName(s)}の点数（百点棒・152で15200点）`}
                       />
-                      <span className="suffix">点</span>
+                      <span className="suffix">00 点</span>
                     </div>
                     <div className="d-flex justify-content-between align-items-center mt-2" style={{ paddingLeft: 6 }}>
                       {settings.yakitoriEnabled ? (

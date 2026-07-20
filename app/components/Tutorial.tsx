@@ -81,8 +81,8 @@ export default function Tutorial({ steps, open, onClose }: TutorialProps) {
 
   return (
     <div className="tour-root" role="dialog" aria-modal="true" aria-label="チュートリアル">
-      {/* クリックを遮る透明レイヤ */}
-      <div className="tour-catch" onClick={(e) => e.stopPropagation()} />
+      {/* 背景タップでいつでも閉じられる（実行強制しない） */}
+      <div className="tour-catch" onClick={onClose} />
       {box ? (
         <div
           className="tour-spot"
@@ -98,7 +98,7 @@ export default function Tutorial({ steps, open, onClose }: TutorialProps) {
         <p>{step.body}</p>
         <div className="tour-actions">
           <button type="button" className="tour-skip" onClick={onClose}>
-            スキップ
+            スキップ（背景タップでも閉じます）
           </button>
           <div className="tour-grp">
             {i > 0 && (
