@@ -297,6 +297,21 @@ export default function CalcPage() {
               </div>
 
               <div className="col-12">
+                <label className="jr-label">端数処理</label>
+                <label className="yk-toggle" data-tour="rounding">
+                  <input
+                    type="checkbox"
+                    checked={settings.rounding === 'gosharokunyu'}
+                    onChange={(e) => setSettings((s) => ({ ...s, rounding: e.target.checked ? 'gosharokunyu' : 'none' }))}
+                  />
+                  五捨六入で整数にする（一般的な精算）
+                </label>
+                <div className="small mt-1" style={{ color: 'var(--jr-ink-muted)' }}>
+                  ONで 100点未満を五捨六入し整数pt表示。OFFは小数（0.1pt）を保持します。
+                </div>
+              </div>
+
+              <div className="col-12">
                 <label className="yk-toggle" style={{ marginRight: 8 }}>
                   <input type="checkbox" checked={settings.yakitoriEnabled}
                     onChange={(e) => setSettings((s) => ({ ...s, yakitoriEnabled: e.target.checked }))} />

@@ -3,6 +3,7 @@ import {
   SEATS,
   round1,
   formatSigned,
+  gosharokunyu,
   emptyYakitori,
   emptySeatNumbers,
   umaFromObject,
@@ -334,6 +335,123 @@ describe('toScoreSettings（API設定→精算設定）', () => {
       yakitoriMode: 'distribution',
     };
     expect(toScoreSettings(api)).toEqual(base);
+  });
+});
+
+describe('gosharokunyu（五捨六入）', () => {
+  it('5以下は切り捨て、6以上は切り上げ', () => {
+    expect(gosharokunyu(12.5)).toBe(12);
+    expect(gosharokunyu(12.6)).toBe(13);
+    expect(gosharokunyu(12.0)).toBe(12);
+    expect(gosharokunyu(12.4)).toBe(12);
+    expect(gosharokunyu(12.9)).toBe(13);
+  });
+  it('負数は絶対値で判定（5捨6入）', () => {
+    expect(gosharokunyu(-12.5)).toBe(-12);
+    expect(gosharokunyu(-12.6)).toBe(-13);
+  });
+  it('0 は 0（符号なし）', () => {
+    expect(gosharokunyu(0)).toBe(0);
+    expect(Object.is(gosharokunyu(0), -0)).toBe(false);
+  });
+});
+
+describe('rounding=gosharokunyu（一般的な整数pt精算）', () => {
+  // 権威例: 25000持ち30000返し / ウマ 10-20 / オカ20
+  const s: ScoreSettings = { ...base, uma: [20, 10, -10, -20], rounding: 'gosharokunyu' };
+
+  it('端数を五捨六入し、1位が端数・オカを吸収して合計0', () => {
+    // 素点 42700 / 30000 / 18000 / 9300（合計100000）
+    const raw = { east: 42700, south: 30000, west: 18000, north: 9300 };
+    const res = calcRoundResult(raw, emptyYakitori(), s);
+    // 2位: gosha(0)+10 = +10
+    expect(res.south.final).toBe(10);
+    // 3位: gosha(-12)-10 = -22
+    expect(res.west.final).toBe(-22);
+    // 4位: gosha(-20.7)=-21, -20 → -41
+    expect(res.north.final).toBe(-41);
+    // 1位: -(10-22-41) = +53
+    expect(res.east.final).toBe(53);
+    // 合計0
+    expect(res.east.final + res.south.final + res.west.final + res.north.final).toBe(0);
+    // 全員整数
+    [res.east, res.south, res.west, res.north].forEach((r) => expect(Number.isInteger(r.final)).toBe(true));
+    // 実効オカ = 20（42700→gosha(12.7)=13, +uma20=33, final53 → oka20）
+    expect(res.east.oka).toBe(20);
+  });
+
+  it('none モードとは結果が異なりうる（端数の有無）', () => {
+    const raw = { east: 42700, south: 30000, west: 18000, north: 9300 };
+    const none = calcRoundResult(raw, emptyYakitori(), { ...s, rounding: 'none' });
+    const gosha = calcRoundResult(raw, emptyYakitori(), s);
+    // none は小数を保持（東 4位 -20.7 など）→ gosha と一致しない
+    expect(none.north.final).not.toBe(gosha.north.final);
+  });
+
+  it('gosharokunyu では okaOverride は無視される', () => {
+    const raw = { east: 42700, south: 30000, west: 18000, north: 9300 };
+    const a = calcRoundResult(raw, emptyYakitori(), s);
+    const b = calcRoundResult(raw, emptyYakitori(), { ...s, okaOverride: 999 });
+    expect(b.east.final).toBe(a.east.final);
+  });
+
+  it('焼き鳥込みでも整数・ゼロサム', () => {
+    const raw = { east: 42700, south: 30000, west: 18000, north: 9300 };
+    const res = calcRoundResult(raw, { east: false, south: false, west: false, north: true }, s);
+    const sum = res.east.final + res.south.final + res.west.final + res.north.final;
+    expect(sum).toBe(0);
+    [res.east, res.south, res.west, res.north].forEach((r) => expect(Number.isInteger(r.final)).toBe(true));
+  });
+});
+
+describe('結合: 複数半荘セッション（実データの流れ）', () => {
+  it('百点棒入力(×100)→素点→精算→累計 が一貫（none）', () => {
+    // 3半荘。各行の合計は 100000。
+    const toRaw = (e: number, s2: number, w: number, n: number) => ({ east: e * 100, south: s2 * 100, west: w * 100, north: n * 100 });
+    const rows = [
+      { raw: toRaw(420, 300, 180, 100) },
+      { raw: toRaw(100, 180, 300, 420) },
+      { raw: toRaw(250, 250, 250, 250) },
+    ];
+    const { totals, ranks } = calcSessionTotals(rows, base);
+    // 各半荘ゼロサム → 累計もゼロサム
+    expect(round1(totals.east + totals.south + totals.west + totals.north)).toBe(0);
+    expect([ranks.east, ranks.south, ranks.west, ranks.north].sort()).toEqual([1, 2, 3, 4]);
+  });
+
+  it('gosharokunyu セッションは全半荘・累計とも整数でゼロサム', () => {
+    const s: ScoreSettings = { ...base, uma: [20, 10, -10, -20], rounding: 'gosharokunyu' };
+    const rows = [
+      { raw: { east: 42700, south: 30000, west: 18000, north: 9300 } },
+      { raw: { east: 9300, south: 18000, west: 30000, north: 42700 } },
+    ];
+    const { totals } = calcSessionTotals(rows, s);
+    SEATS.forEach((seat) => expect(Number.isInteger(totals[seat])).toBe(true));
+    expect(totals.east + totals.south + totals.west + totals.north).toBe(0);
+  });
+
+  it('結合: history route 相当（API設定→精算→totalScore(×10整数)）', () => {
+    // history route と同じ道筋を再現
+    const settings = toScoreSettings({
+      uma: { first: 10, second: 5, third: -5, fourth: -10 },
+      yakitori: 6000,
+      initialPoints: 25000,
+      returnPoints: 30000,
+      chipPoints: 1000,
+      chipEnabled: true,
+      yakitoriEnabled: false,
+      yakitoriMode: 'distribution',
+    });
+    const rows = [
+      { raw: { east: 40000, south: 30000, west: 20000, north: 10000 } },
+      { raw: { east: 10000, south: 20000, west: 30000, north: 40000 } },
+    ];
+    const { totals, ranks } = calcSessionTotals(rows, settings);
+    const stored = SEATS.map((s) => Math.round(round1(totals[s]) * 10));
+    // 保存は 0.1点刻みの整数。合計は 0。
+    expect(stored.reduce((a, b) => a + b, 0)).toBe(0);
+    // 東と北は対称でトップタイ（席順で東が上位）
+    expect(ranks.east).toBe(1);
   });
 });
 

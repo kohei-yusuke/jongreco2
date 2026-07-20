@@ -28,6 +28,13 @@ export const SEAT_LABEL: Record<Seat, string> = {
 
 export type YakitoriMode = 'distribution' | 'winner_takes_all';
 
+/**
+ * 端数処理。
+ * - 'none'          : 小数を保持（例 +12.7）。従来動作。
+ * - 'gosharokunyu'  : 五捨六入で千点単位の整数に丸め、1位が端数・オカを吸収（一般的な精算）。
+ */
+export type Rounding = 'none' | 'gosharokunyu';
+
 export type SeatRecord<T> = Record<Seat, T>;
 
 export interface ScoreSettings {
@@ -46,8 +53,11 @@ export interface ScoreSettings {
   /**
    * オカ（千点単位、1位への加点）を手動指定する場合の値。
    * 未指定なら (返し点 - 配給原点) × 4 / 1000 で自動計算。
+   * ※ rounding='gosharokunyu' の場合、オカは返し点から自動決定され okaOverride は無視される。
    */
   okaOverride?: number;
+  /** 端数処理（既定 'none'）。'gosharokunyu' で一般的な整数pt精算。 */
+  rounding?: Rounding;
 }
 
 export interface SeatResult {
@@ -83,6 +93,19 @@ export function round1(n: number): number {
 export function formatSigned(n: number): string {
   const r = round1(n);
   return (r > 0 ? '+' : '') + r.toFixed(1);
+}
+
+/**
+ * 五捨六入で千点単位の整数へ丸める。
+ * 100点単位（小数第1位）が 5以下は切り捨て・6以上は切り上げ。負数は絶対値で判定。
+ * 例: 12.5→12, 12.6→13, -12.6→-13, -12.5→-12
+ */
+export function gosharokunyu(pt: number): number {
+  const sign = pt < 0 ? -1 : 1;
+  const m = Math.abs(pt);
+  const intPart = Math.floor(m + 1e-9);
+  const hundreds = Math.round((m - intPart) * 10);
+  return sign * (hundreds >= 6 ? intPart + 1 : intPart);
 }
 
 export function emptyYakitori(): SeatRecord<boolean> {
@@ -216,8 +239,37 @@ export function calcRoundResult(
   const ranks = rankSeats(raw);
   const oka = calcOka(settings);
   const yakAdj = calcYakitoriAdjustments(yakitori, ranks, settings);
+  const firstSeat = SEATS.find((s) => ranks[s] === 1)!;
 
   const result = {} as SeatRecord<SeatResult>;
+
+  if ((settings.rounding ?? 'none') === 'gosharokunyu') {
+    // 一般的な整数pt精算：2〜4位は五捨六入、1位は端数・オカを吸収（合計0）
+    let othersSum = 0;
+    SEATS.forEach((seat) => {
+      const rank = ranks[seat];
+      if (rank === 1) return;
+      const uma = settings.uma[rank - 1];
+      const diff = gosharokunyu((raw[seat] - settings.returnPoints + yakAdj[seat]) / 1000);
+      const final = diff + uma;
+      othersSum += final;
+      result[seat] = { rank, rawPoints: raw[seat], uma, oka: 0, yakitoriAdj: yakAdj[seat], final };
+    });
+    const uma1 = settings.uma[0];
+    const diff1 = gosharokunyu((raw[firstSeat] - settings.returnPoints + yakAdj[firstSeat]) / 1000);
+    const final1 = -othersSum;
+    result[firstSeat] = {
+      rank: 1,
+      rawPoints: raw[firstSeat],
+      uma: uma1,
+      oka: final1 - diff1 - uma1, // 実効オカ（端数込み、参考値）
+      yakitoriAdj: yakAdj[firstSeat],
+      final: final1,
+    };
+    return result;
+  }
+
+  // 端数保持（従来動作）：明示オカ＋小数
   SEATS.forEach((seat) => {
     const rank = ranks[seat];
     // rank は必ず 1..4、settings.uma は4要素タプルなので添字は常に有効
