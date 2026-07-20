@@ -38,6 +38,9 @@ interface Persisted {
   settings: ScoreSettings;
   names: SeatRecord<string>;
   rounds: Round[];
+  /** 「記録に追加」前の入力途中の1半荘も保存し、更新で消えないようにする */
+  inputs?: SeatRecord<string>;
+  yakitori?: SeatRecord<boolean>;
 }
 
 const emptyStr = (): SeatRecord<string> => ({ east: '', south: '', west: '', north: '' });
@@ -72,6 +75,8 @@ export default function CalcPage() {
         if (p.settings) setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
         if (p.names) setNames({ ...emptyStr(), ...p.names });
         if (Array.isArray(p.rounds)) setRounds(p.rounds);
+        if (p.inputs) setInputs({ ...emptyStr(), ...p.inputs });
+        if (p.yakitori) setYakitori({ ...emptyBool(), ...p.yakitori });
       }
     } catch {
       /* ignore */
@@ -79,16 +84,16 @@ export default function CalcPage() {
     setHydrated(true);
   }, []);
 
-  // 保存
+  // 保存（入力途中の1半荘も含めて保存 → 更新/再訪でも復元）
   useEffect(() => {
     if (!hydrated) return;
-    const data: Persisted = { settings, names, rounds };
+    const data: Persisted = { settings, names, rounds, inputs, yakitori };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
       /* ignore */
     }
-  }, [settings, names, rounds, hydrated]);
+  }, [settings, names, rounds, inputs, yakitori, hydrated]);
 
   const rawScores: SeatRecord<number> = useMemo(() => {
     const raw = {} as SeatRecord<number>;
