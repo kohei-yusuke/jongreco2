@@ -55,7 +55,9 @@
 app/
   page.tsx                     ランディング（ゲスト導線: /calc へ）
   calc/page.tsx                ★ 登録不要の点数計算ツール（完全クライアント / localStorage / DB不要）
+                               初回訪問で自動チュートリアル、ヘッダー「使い方」で再表示
   components/ThemeToggle.tsx    ライト/ダーク切替（localStorage + no-flashスクリプトは layout.tsx）
+  components/Tutorial.tsx       スポットライト式のインタラクティブ・チュートリアル（data-tour属性で対象指定・再利用可）
   games/[id]/score/            スコア入力ページ（本体・要ログイン）
     page.tsx
     components/
