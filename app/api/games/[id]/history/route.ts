@@ -1,51 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-interface Player {
-  id: string;
-  gameId: string;
-  userId: string | null;
-  name: string;
-  position: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface Score {
-  id: string;
-  gameId: string;
-  round: number;
-  east: number;
-  south: number;
-  west: number;
-  north: number;
-  createdAt: Date;
-  updatedAt: Date;
-  roundId: string | null;
-}
-
-interface Game {
-  id: string;
-  name: string | null;
-  initialPoints: number;
-  returnPoints: number;
-  chipPoints: number;
-  yakitoriPoints: number;
-  yakitoriMode: string;
-  uma1: number;
-  uma2: number;
-  uma3: number;
-  uma4: number;
-  chipEnabled: boolean;
-  yakitoriEnabled: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  status: "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-}
-
-interface GameWithRelations extends Game {
-  players: Player[];
-  scores: Score[];
-}
+import {
+  SEATS,
+  calcSessionTotals,
+  round1,
+  type Seat,
+  type ScoreSettings,
+  type YakitoriMode,
+  type SeatRecord,
+} from '@/lib/score';
 
 interface GameHistoryPlayer {
   id: string;
@@ -77,14 +40,14 @@ export async function POST(
     const { status } = await request.json();
     const gameId = params.id;
 
-    // ゲームとプレイヤー情報を取得
+    // ゲームとプレイヤー情報を取得（焼き鳥情報も含む）
     const game = await prisma.game.findUnique({
       where: { id: gameId },
       include: {
         players: true,
-        scores: true,
+        scores: { include: { yakitori: true } },
       },
-    }) as GameWithRelations | null;
+    });
 
     if (!game) {
       return NextResponse.json(
@@ -93,27 +56,39 @@ export async function POST(
       );
     }
 
-    // 各プレイヤーの総得点と順位を計算
-    const playerScores = game.players.map((player) => {
-      const totalScore = game.scores.reduce((sum: number, score) => {
-        const position = player.position.toLowerCase();
-        const scoreValue = score[position];
-        return sum + (typeof scoreValue === 'number' ? scoreValue : 0);
-      }, 0);
+    // 精算設定を lib/score の形へ
+    const settings: ScoreSettings = {
+      initialPoints: game.initialPoints,
+      returnPoints: game.returnPoints,
+      uma: [game.uma1, game.uma2, game.uma3, game.uma4],
+      yakitoriPoints: game.yakitoriPoints,
+      yakitoriEnabled: game.yakitoriEnabled,
+      yakitoriMode: (game.yakitoriMode === 'winner_takes_all' ? 'winner_takes_all' : 'distribution') as YakitoriMode,
+      chipPoints: game.chipPoints,
+    };
 
-      return {
-        playerId: player.id,
-        name: player.name,
-        totalScore,
-        rank: 0, // 一時的な値
-      };
-    });
+    // 全半荘を lib/score で精算（ウマ・オカ・返し点・焼き鳥を反映）
+    const rows = game.scores.map((s) => ({
+      raw: { east: s.east, south: s.south, west: s.west, north: s.north } as SeatRecord<number>,
+      yakitori: s.yakitori
+        ? { east: s.yakitori.east, south: s.yakitori.south, west: s.yakitori.west, north: s.yakitori.north }
+        : undefined,
+    }));
+    const { totals, ranks } = calcSessionTotals(rows, settings);
 
-    // 順位付け
-    const sortedScores = [...playerScores].sort((a, b) => b.totalScore - a.totalScore);
-    sortedScores.forEach((score, index) => {
-      score.rank = index + 1;
-    });
+    // 席→プレイヤーへ割り当て。totalScore は「千点単位×10（＝0.1点刻み）」の整数で保存。
+    const sortedScores = game.players
+      .map((player) => {
+        const seat = player.position.toLowerCase() as Seat;
+        const seatKnown = SEATS.includes(seat);
+        return {
+          playerId: player.id,
+          name: player.name,
+          totalScore: seatKnown ? Math.round(round1(totals[seat]) * 10) : 0,
+          rank: seatKnown ? ranks[seat] : 0,
+        };
+      })
+      .sort((a, b) => a.rank - b.rank);
 
     // 対局履歴を作成または更新
     const gameHistory = await prisma.$transaction(async (tx) => {

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import ScoreInput from './components/ScoreInput';
 import ScoreHistory from './components/ScoreHistory';
 import ScoreGraph from './components/ScoreGraph';
 import TotalScoreGraph from './components/TotalScoreGraph';
+import { toScoreSettings, type YakitoriMode } from '@/lib/score';
 
 interface Player {
   id: string;
@@ -33,7 +34,7 @@ interface Game {
     chipPoints: number;
     chipEnabled: boolean;
     yakitoriEnabled: boolean;
-    yakitoriMode: string;
+    yakitoriMode: YakitoriMode;
   };
   currentRound: number;
 }
@@ -47,6 +48,13 @@ export default function ScorePage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const bumpRefresh = useCallback(() => setRefreshToken((n) => n + 1), []);
+  const scoreSettings = useMemo(
+    () => (game ? toScoreSettings(game.settings) : null),
+    [game],
+  );
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -205,42 +213,39 @@ export default function ScorePage() {
             gameId={game.id}
             players={game.players}
             onScoreChange={handleScoreChange}
+            onSaved={bumpRefresh}
             gameSettings={game.settings}
           />
         </div>
 
         <div className="col-12 col-lg-6">
-          <div className="card h-100">
-            <div className="card-header">
-              <h5 className="card-title mb-0" style={{ fontSize: 'clamp(1.1rem, 3vw, 1.25rem)' }}>スコア履歴</h5>
-            </div>
-            <div className="card-body">
-              <ScoreHistory
-                gameId={game.id}
-                onScoreUpdate={() => {}}
-              />
-            </div>
-          </div>
+          {scoreSettings && (
+            <ScoreHistory
+              gameId={game.id}
+              settings={scoreSettings}
+              refreshToken={refreshToken}
+              onScoreUpdate={bumpRefresh}
+              chipEnabled={game.settings.chipEnabled}
+            />
+          )}
         </div>
 
         <div className="col-12">
-          <div className="card">
-            <div className="card-header">
-              <h5 className="card-title mb-0" style={{ fontSize: 'clamp(1.1rem, 3vw, 1.25rem)' }}>スコア推移</h5>
+          <div className="card border-0 shadow-sm">
+            <div className="card-header bg-white py-3">
+              <h5 className="mb-0 fw-semibold">📈 スコア推移</h5>
             </div>
             <div className="card-body">
               <div className="row g-4">
                 <div className="col-12 col-lg-6">
-                  <ScoreGraph
-                    gameId={game.id}
-                    onScoreUpdate={() => {}}
-                  />
+                  {scoreSettings && (
+                    <ScoreGraph gameId={game.id} settings={scoreSettings} refreshToken={refreshToken} />
+                  )}
                 </div>
                 <div className="col-12 col-lg-6">
-                  <TotalScoreGraph
-                    gameId={game.id}
-                    onScoreUpdate={() => {}}
-                  />
+                  {scoreSettings && (
+                    <TotalScoreGraph gameId={game.id} settings={scoreSettings} refreshToken={refreshToken} />
+                  )}
                 </div>
               </div>
             </div>

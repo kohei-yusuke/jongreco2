@@ -52,62 +52,21 @@ export default function GameHistoryList() {
 
   const handleGameStart = async (players: Player[], settings: GameSettings) => {
     try {
-      // プレイヤー情報を位置ごとに整理
-      const playersByPosition = {
-        east: players.find(p => p.position === 'east'),
-        south: players.find(p => p.position === 'south'),
-        west: players.find(p => p.position === 'west'),
-        north: players.find(p => p.position === 'north')
-      };
-
-      // プレイヤーが4人揃っているか確認
-      if (!playersByPosition.east || !playersByPosition.south || 
-          !playersByPosition.west || !playersByPosition.north) {
+      const positions = ['east', 'south', 'west', 'north'] as const;
+      const hasAll = positions.every((pos) => players.some((p) => p.position === pos));
+      if (players.length !== 4 || !hasAll) {
         throw new Error('プレイヤーは4人必要です');
       }
 
+      // API は players を配列で受け取る（NewGameSection と同じ契約）
       const response = await fetch('/api/games', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          players: {
-            east: {
-              id: playersByPosition.east.userId,
-              name: playersByPosition.east.name
-            },
-            south: {
-              id: playersByPosition.south.userId,
-              name: playersByPosition.south.name
-            },
-            west: {
-              id: playersByPosition.west.userId,
-              name: playersByPosition.west.name
-            },
-            north: {
-              id: playersByPosition.north.userId,
-              name: playersByPosition.north.name
-            }
-          },
-          settings: {
-            initialPoints: settings.initialPoints,
-            returnPoints: settings.returnPoints,
-            chipPoints: settings.chipPoints,
-            yakitoriPoints: settings.yakitoriPoints,
-            uma1: settings.uma1,
-            uma2: settings.uma2,
-            uma3: settings.uma3,
-            uma4: settings.uma4,
-            chipEnabled: settings.chipEnabled,
-            yakitoriEnabled: settings.yakitoriEnabled,
-            yakitoriMode: settings.yakitoriMode
-          }
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players, settings }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || '対局の作成に失敗しました');
       }
 
@@ -139,34 +98,10 @@ export default function GameHistoryList() {
     fetchHistories();
   }, []);
 
-  const calculateFinalScore = (player: GameHistory['players'][0], history: GameHistory): number => {
-    let finalScore = player.totalScore;
-
-    // ウマを加算
-    if (history.game.settings.uma) {
-      const uma = {
-        1: history.game.settings.uma.first,
-        2: history.game.settings.uma.second,
-        3: history.game.settings.uma.third,
-        4: history.game.settings.uma.fourth,
-      }[player.rank] || 0;
-      finalScore += uma * 1000;
-    }
-
-    // 焼き鳥を計算
-    if (history.game.settings.yakitoriEnabled && history.game.settings.yakitori) {
-      const isYakitori = history.game.yakitoriPlayers.includes(player.player.id);
-      if (isYakitori) {
-        finalScore -= history.game.settings.yakitori * 1000;
-      } else if (history.game.yakitoriPlayers.length > 0) {
-        // 焼き鳥でないプレイヤーに分配
-        const nonYakitoriPlayers = 4 - history.game.yakitoriPlayers.length;
-        const distribution = (history.game.settings.yakitori * 1000 * history.game.yakitoriPlayers.length) / nonYakitoriPlayers;
-        finalScore += distribution;
-      }
-    }
-
-    return finalScore;
+  // history route が保存する totalScore は「千点単位 × 10（0.1点刻み）」の整数。
+  const formatTotal = (totalScore: number): string => {
+    const v = totalScore / 10;
+    return (v > 0 ? '+' : '') + v.toFixed(1);
   };
 
   return (
@@ -227,8 +162,12 @@ export default function GameHistoryList() {
                   </td>
                   <td>
                     {history.players.map((player) => (
-                      <div key={player.player.id}>
-                        {player.totalScore.toLocaleString()}点
+                      <div
+                        key={player.player.id}
+                        className={player.totalScore > 0 ? 'text-success' : player.totalScore < 0 ? 'text-danger' : ''}
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        {formatTotal(player.totalScore)}
                       </div>
                     ))}
                   </td>
