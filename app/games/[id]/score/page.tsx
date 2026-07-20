@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import ScoreInput from './components/ScoreInput';
 import ScoreHistory from './components/ScoreHistory';
 import ScoreGraph from './components/ScoreGraph';
 import TotalScoreGraph from './components/TotalScoreGraph';
+import { toScoreSettings, type YakitoriMode } from '@/lib/score';
 
 interface Player {
   id: string;
@@ -33,7 +34,7 @@ interface Game {
     chipPoints: number;
     chipEnabled: boolean;
     yakitoriEnabled: boolean;
-    yakitoriMode: string;
+    yakitoriMode: YakitoriMode;
   };
   currentRound: number;
 }
@@ -47,6 +48,13 @@ export default function ScorePage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const bumpRefresh = useCallback(() => setRefreshToken((n) => n + 1), []);
+  const scoreSettings = useMemo(
+    () => (game ? toScoreSettings(game.settings) : null),
+    [game],
+  );
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -164,37 +172,23 @@ export default function ScorePage() {
   }
 
   return (
-    <div className="container py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-        <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center mb-3 mb-md-0">
-          <h1 className="mb-2 mb-md-0" style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)' }}>{game.name}</h1>
-          <span className="ms-md-3 text-muted" style={{ fontSize: 'clamp(0.9rem, 3vw, 1.2rem)' }}>
-            対局ID: {game.id}
-          </span>
+    <div className="page-wrap">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+        <div className="min-w-0">
+          <h1 className="mb-1 fw-bold text-truncate" style={{ fontSize: 'clamp(1.4rem, 4vw, 1.9rem)', letterSpacing: '-.02em' }}>
+            {game.name || '対局'}
+          </h1>
+          <span className="jr-chip jr-chip-muted" style={{ fontSize: '.72rem' }}>ID {game.id.slice(0, 8)}…</span>
         </div>
-        <div className="d-flex gap-2">
-          <button
-            className="btn btn-outline-primary"
-            onClick={() => setShowSettingsModal(true)}
-            style={{ minWidth: '80px', fontSize: 'clamp(0.9rem, 3vw, 1rem)' }}
-          >
-            設定
+        <div className="d-flex gap-2 w-100" style={{ flexWrap: 'wrap', maxWidth: 460 }}>
+          <button className="jr-btn jr-btn-ghost flex-fill" style={{ padding: '.55rem 1rem', minHeight: 44 }} onClick={() => setShowSettingsModal(true)}>
+            <i className="bi bi-sliders" /> 設定
           </button>
-          <button
-            className="btn btn-outline-secondary"
-            onClick={handleSaveAndReturn}
-            disabled={isSaving}
-            style={{ minWidth: '120px', fontSize: 'clamp(0.9rem, 3vw, 1rem)' }}
-          >
-            {isSaving ? '保存中...' : '下書き保存'}
+          <button className="jr-btn jr-btn-ghost flex-fill" style={{ padding: '.55rem 1rem', minHeight: 44 }} onClick={handleSaveAndReturn} disabled={isSaving}>
+            {isSaving ? '保存中…' : '下書き保存'}
           </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleCompleteGame}
-            disabled={isSaving}
-            style={{ minWidth: '120px', fontSize: 'clamp(0.9rem, 3vw, 1rem)' }}
-          >
-            {isSaving ? '保存中...' : '対局終了'}
+          <button className="jr-btn jr-btn-primary flex-fill" style={{ padding: '.55rem 1.1rem', minHeight: 44 }} onClick={handleCompleteGame} disabled={isSaving}>
+            {isSaving ? '保存中…' : '対局終了'}
           </button>
         </div>
       </div>
@@ -205,42 +199,39 @@ export default function ScorePage() {
             gameId={game.id}
             players={game.players}
             onScoreChange={handleScoreChange}
+            onSaved={bumpRefresh}
             gameSettings={game.settings}
           />
         </div>
 
         <div className="col-12 col-lg-6">
-          <div className="card h-100">
-            <div className="card-header">
-              <h5 className="card-title mb-0" style={{ fontSize: 'clamp(1.1rem, 3vw, 1.25rem)' }}>スコア履歴</h5>
-            </div>
-            <div className="card-body">
-              <ScoreHistory
-                gameId={game.id}
-                onScoreUpdate={() => {}}
-              />
-            </div>
-          </div>
+          {scoreSettings && (
+            <ScoreHistory
+              gameId={game.id}
+              settings={scoreSettings}
+              refreshToken={refreshToken}
+              onScoreUpdate={bumpRefresh}
+              chipEnabled={game.settings.chipEnabled}
+            />
+          )}
         </div>
 
         <div className="col-12">
-          <div className="card">
-            <div className="card-header">
-              <h5 className="card-title mb-0" style={{ fontSize: 'clamp(1.1rem, 3vw, 1.25rem)' }}>スコア推移</h5>
+          <div className="jr-card">
+            <div className="jr-card-head">
+              <h5 className="jr-card-title">📈 スコア推移</h5>
             </div>
-            <div className="card-body">
+            <div className="jr-card-body">
               <div className="row g-4">
                 <div className="col-12 col-lg-6">
-                  <ScoreGraph
-                    gameId={game.id}
-                    onScoreUpdate={() => {}}
-                  />
+                  {scoreSettings && (
+                    <ScoreGraph gameId={game.id} settings={scoreSettings} refreshToken={refreshToken} />
+                  )}
                 </div>
                 <div className="col-12 col-lg-6">
-                  <TotalScoreGraph
-                    gameId={game.id}
-                    onScoreUpdate={() => {}}
-                  />
+                  {scoreSettings && (
+                    <TotalScoreGraph gameId={game.id} settings={scoreSettings} refreshToken={refreshToken} />
+                  )}
                 </div>
               </div>
             </div>

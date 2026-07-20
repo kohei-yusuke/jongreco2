@@ -48,72 +48,57 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="container">
-      <div className="row justify-content-center">
-        <div className="col-md-6 col-lg-4">
-          <div className="card shadow-sm mt-5">
-            <div className="card-body p-4">
-              <h2 className="text-center mb-4">新規登録</h2>
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="email" className="form-label">
-                    メールアドレス
-                  </label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="password" className="form-label">
-                    パスワード
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <div className="form-text">
-                    8文字以上で入力してください
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="confirmPassword" className="form-label">
-                    パスワード（確認）
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="confirmPassword"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="d-grid gap-2">
-                  <button type="submit" className="btn btn-primary">
-                    登録
-                  </button>
-                </div>
-              </form>
-              <div className="text-center mt-3">
-                <Link href="/login" className="text-decoration-none">
-                  すでにアカウントをお持ちの方はこちら
-                </Link>
-              </div>
+    <div className="auth-wrap">
+      <div className="auth-card jr-card">
+        <div className="jr-card-body">
+          <h2 className="auth-title">アカウント作成</h2>
+          <p className="auth-sub mb-4">はじめまして。JongReco へようこそ</p>
+          {error && <div className="jr-alert mb-3">{error}</div>}
+          <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+            <div>
+              <label htmlFor="email" className="jr-label">メールアドレス</label>
+              <input
+                type="email"
+                className="jr-input"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+              />
             </div>
+            <div>
+              <label htmlFor="password" className="jr-label">パスワード</label>
+              <input
+                type="password"
+                className="jr-input"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="8文字以上"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="jr-label">パスワード（確認）</label>
+              <input
+                type="password"
+                className="jr-input"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="もう一度入力"
+                required
+              />
+            </div>
+            <button type="submit" className="jr-btn jr-btn-primary jr-btn-block mt-1">
+              登録する
+            </button>
+          </form>
+          <div className="text-center mt-3">
+            <Link href="/login" className="jr-link" style={{ fontSize: '.9rem' }}>
+              すでにアカウントをお持ちの方はこちら
+            </Link>
           </div>
         </div>
       </div>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -13,68 +12,32 @@ import {
   Legend,
   ChartOptions,
 } from 'chart.js';
+import { SEATS, SEAT_LABEL, calcRoundFinals, round1, type Seat, type SeatRecord, type ScoreSettings } from '@/lib/score';
+import { useGameScores } from './useGameScores';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-interface Score {
-  id: string;
-  round: number;
-  east: number;
-  south: number;
-  west: number;
-  north: number;
-}
+const SEAT_COLOR = {
+  east: 'rgb(239, 68, 68)',
+  south: 'rgb(59, 130, 246)',
+  west: 'rgb(16, 185, 129)',
+  north: 'rgb(245, 158, 11)',
+} as const;
 
 interface TotalScoreGraphProps {
   gameId: string;
-  onScoreUpdate?: () => void;
+  settings: ScoreSettings;
+  refreshToken?: number;
 }
 
-export default function TotalScoreGraph({ gameId, onScoreUpdate }: TotalScoreGraphProps) {
-  const [scores, setScores] = useState<Score[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchScores = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/games/${gameId}/scores`);
-      if (!response.ok) {
-        throw new Error('スコアデータの取得に失敗しました');
-      }
-      const data = await response.json();
-      setScores(data.scores || []);
-    } catch (error) {
-      console.error('Error fetching scores:', error);
-      setError(error instanceof Error ? error.message : 'スコアデータの取得に失敗しました');
-    } finally {
-      setLoading(false);
-    }
-  }, [gameId]);
-
-  useEffect(() => {
-    fetchScores();
-  }, [gameId, fetchScores]);
-
-  // スコアが更新されたときに履歴を更新
-  useEffect(() => {
-    if (onScoreUpdate) {
-      fetchScores();
-    }
-  }, [onScoreUpdate, fetchScores]);
+/** 精算得点の累計推移。 */
+export default function TotalScoreGraph({ gameId, settings, refreshToken = 0 }: TotalScoreGraphProps) {
+  const { scores, loading, error } = useGameScores(gameId, refreshToken);
 
   if (loading) {
     return (
       <div className="d-flex justify-content-center my-3">
-        <div className="spinner-border" role="status">
+        <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
       </div>
@@ -82,85 +45,46 @@ export default function TotalScoreGraph({ gameId, onScoreUpdate }: TotalScoreGra
   }
 
   if (error) {
-    return (
-      <div className="alert alert-danger" role="alert">
-        {error}
-      </div>
-    );
+    return <div className="alert alert-danger" role="alert">{error}</div>;
   }
 
-  // 累計スコアを計算
-  const totalScores = scores.reduce((acc, score) => {
-    const lastScores = acc.length > 0 ? acc[acc.length - 1] : { east: 0, south: 0, west: 0, north: 0 };
-    acc.push({
-      east: lastScores.east + score.east,
-      south: lastScores.south + score.south,
-      west: lastScores.west + score.west,
-      north: lastScores.north + score.north,
-    });
-    return acc;
-  }, [] as { east: number; south: number; west: number; north: number }[]);
+  // 累計 final を計算
+  const cumulative: SeatRecord<number>[] = [];
+  const running: SeatRecord<number> = { east: 0, south: 0, west: 0, north: 0 };
+  scores.forEach((s) => {
+    const finals = calcRoundFinals(
+      { east: s.east, south: s.south, west: s.west, north: s.north },
+      s.yakitori ?? { east: false, south: false, west: false, north: false },
+      settings,
+    );
+    SEATS.forEach((seat) => { running[seat] += finals[seat]; });
+    cumulative.push({ ...running });
+  });
 
   const data = {
-    labels: scores.map((_, index) => `${index + 1}局`),
-    datasets: [
-      {
-        label: '東家',
-        data: totalScores.map(score => score.east),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-        tension: 0.1,
-      },
-      {
-        label: '南家',
-        data: totalScores.map(score => score.south),
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-        tension: 0.1,
-      },
-      {
-        label: '西家',
-        data: totalScores.map(score => score.west),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-        tension: 0.1,
-      },
-      {
-        label: '北家',
-        data: totalScores.map(score => score.north),
-        borderColor: 'rgb(255, 205, 86)',
-        backgroundColor: 'rgba(255, 205, 86, 0.5)',
-        tension: 0.1,
-      },
-    ],
+    labels: scores.map((_, i) => `${i + 1}`),
+    datasets: SEATS.map((seat: Seat) => ({
+      label: SEAT_LABEL[seat],
+      data: cumulative.map((c) => round1(c[seat])),
+      borderColor: SEAT_COLOR[seat],
+      backgroundColor: SEAT_COLOR[seat],
+      tension: 0.2,
+    })),
   };
 
   const options: ChartOptions<'line'> = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: '累計得点推移',
-      },
+      legend: { position: 'top' as const },
+      title: { display: true, text: '累計得点' },
     },
-    scales: {
-      y: {
-        beginAtZero: false,
-        ticks: {
-          callback: function(value) {
-            return value.toLocaleString();
-          }
-        }
-      }
-    }
+    scales: { y: { ticks: { callback: (v) => `${v}` } } },
   };
 
   return (
-    <div style={{ height: '250px' }}>
+    <div style={{ height: 260 }}>
       <Line options={options} data={data} />
     </div>
   );
-} 
+}

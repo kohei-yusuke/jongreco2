@@ -74,6 +74,7 @@ export async function POST(request: Request) {
         returnPoints: settings.returnPoints,
         chipPoints: settings.chipPoints,
         yakitoriPoints: settings.yakitoriPoints,
+        yakitoriMode: settings.yakitoriMode ?? 'distribution',
         uma1: settings.uma1,
         uma2: settings.uma2,
         uma3: settings.uma3,
@@ -81,11 +82,11 @@ export async function POST(request: Request) {
         chipEnabled: settings.chipEnabled,
         yakitoriEnabled: settings.yakitoriEnabled,
         players: {
+          // NOTE: Player モデルに isCurrentUser カラムは無いので保存しない
           create: players.map(player => ({
             position: player.position,
             name: player.name,
             userId: player.userId,
-            isCurrentUser: player.isCurrentUser
           }))
         }
       },

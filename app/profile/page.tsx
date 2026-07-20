@@ -243,15 +243,11 @@ export default function ProfilePage() {
 
   if (status === 'loading') {
     return (
-      <div className="container py-5">
-        <div className="row justify-content-center">
-          <div className="col-md-8">
-            <div className="card">
-              <div className="card-body text-center">
-                <div className="spinner-border" role="status">
-                  <span className="visually-hidden">読み込み中...</span>
-                </div>
-              </div>
+      <div className="page-wrap">
+        <div className="jr-card">
+          <div className="jr-card-body text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">読み込み中...</span>
             </div>
           </div>
         </div>
@@ -272,15 +268,14 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-md-8">
-          <div className="card">
-            <div className="card-body">
-              <h2 className="card-title mb-4">プロフィール</h2>
-              
+    <div className="page-wrap" style={{ maxWidth: 820 }}>
+      <div className="jr-card">
+        <div className="jr-card-head">
+          <h2 className="jr-card-title">👤 プロフィール</h2>
+        </div>
+        <div className="jr-card-body">
               <div className="mb-4">
-                <h3 className="h5 mb-3">基本情報</h3>
+                <h3 className="h6 fw-bold mb-3" style={{ color: 'var(--jr-ink-soft)' }}>基本情報</h3>
                 <div className="row mb-4">
                   <div className="col-md-4 fw-bold">アイコン</div>
                   <div className="col-md-8">
@@ -472,33 +467,34 @@ export default function ProfilePage() {
               </div>
 
               <div className="mb-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h3 className="h5 mb-0">フレンド</h3>
-                  <div className="d-flex gap-2">
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <h3 className="h6 fw-bold mb-0" style={{ color: 'var(--jr-ink-soft)' }}>フレンド</h3>
+                  <div className="d-flex gap-2 flex-wrap">
                     <button
-                      className="btn btn-outline-primary"
+                      className="jr-btn jr-btn-ghost"
+                      style={{ minHeight: 40, padding: '.4rem .9rem' }}
                       onClick={() => setShowQRCode(true)}
                     >
-                      QRコードを表示
+                      <i className="bi bi-qr-code" /> QR表示
                     </button>
                     <button
-                      className="btn btn-outline-primary"
+                      className="jr-btn jr-btn-ghost"
+                      style={{ minHeight: 40, padding: '.4rem .9rem' }}
                       onClick={() => setShowQRScanner(true)}
                     >
-                      QRコードをスキャン
+                      <i className="bi bi-qr-code-scan" /> スキャン
                     </button>
                     <button
-                      className="btn btn-primary"
+                      className="jr-btn jr-btn-primary"
+                      style={{ minHeight: 40, padding: '.4rem 1rem' }}
                       onClick={() => setShowFriendSearch(true)}
                     >
-                      フレンドを追加
+                      <i className="bi bi-person-plus" /> 追加
                     </button>
                   </div>
                 </div>
                 <FriendSection session={session} />
               </div>
-            </div>
-          </div>
         </div>
       </div>
 

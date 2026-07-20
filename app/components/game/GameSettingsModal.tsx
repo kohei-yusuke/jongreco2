@@ -20,6 +20,15 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // ウマ合計が0でないとゼロサムが崩れる（一般ルール）
+      const umaTotal = settings.uma1 + settings.uma2 + settings.uma3 + settings.uma4;
+      if (umaTotal !== 0) {
+        const proceed = confirm(
+          `ウマの合計が ${umaTotal > 0 ? '+' : ''}${umaTotal} で、0ではありません。\n` +
+          `合計得点がゼロサムになりません。このまま開始しますか？`,
+        );
+        if (!proceed) return;
+      }
       onStart(settings);
       onClose();
     } catch (error) {
@@ -29,18 +38,16 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
   };
 
   const handleChange = (field: keyof GameSettings, value: number | boolean | 'distribution' | 'winner_takes_all') => {
-    // 焼き鳥のバリデーション
+    // 焼き鳥は点数単位（100の倍数）でのみ受け付ける。
+    // ※ かつて「3で割り切れること」を要求していたが、分配先の人数は
+    //   1〜3人で可変なので不正な制約だった（削除）。
     if (field === 'yakitoriPoints' && typeof value === 'number') {
       if (value % 100 !== 0) {
         alert('焼き鳥の点数は100の倍数で入力してください');
         return;
       }
-      if (value % 3 !== 0) {
-        alert('焼き鳥の点数は3で割り切れる値で入力してください（分配のため）');
-        return;
-      }
     }
-    
+
     setSettings(prev => ({
       ...prev,
       [field]: value
@@ -74,7 +81,7 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
                     width: '20px',
                     height: '20px',
                     borderRadius: '50%',
-                    backgroundColor: '#e0e0e0',
+                    backgroundColor: '#64748b',
                     color: 'white',
                     fontSize: '12px',
                     fontWeight: 'bold'
@@ -109,7 +116,7 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
                     width: '20px',
                     height: '20px',
                     borderRadius: '50%',
-                    backgroundColor: '#e0e0e0',
+                    backgroundColor: '#64748b',
                     color: 'white',
                     fontSize: '12px',
                     fontWeight: 'bold'
@@ -144,7 +151,7 @@ export default function GameSettingsModal({ isOpen, onClose, onStart, initialSet
                     width: '20px',
                     height: '20px',
                     borderRadius: '50%',
-                    backgroundColor: '#e0e0e0',
+                    backgroundColor: '#64748b',
                     color: 'white',
                     fontSize: '12px',
                     fontWeight: 'bold'

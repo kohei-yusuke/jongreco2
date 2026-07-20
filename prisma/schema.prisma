@@ -42,7 +42,7 @@ model Game {
   returnPoints    Int       @default(30000)
   chipPoints      Int       @default(1000)
   yakitoriPoints  Int       @default(6000)
-  yakitoriMode    String    @default("distribution") // "distribution" or "winner"
+  yakitoriMode    String    @default("distribution") // "distribution" | "winner_takes_all"
   uma1            Int       @default(10)
   uma2            Int       @default(5)
   uma3            Int       @default(-5)
